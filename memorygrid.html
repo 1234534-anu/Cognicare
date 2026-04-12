@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Memory Grid</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    background: #ffffff;
+    margin: 0;
+    padding: 0;
+    color: #1f2937;
+  }
+
+  header {
+    padding: 24px 40px;
+    border-bottom: 4px solid #0ea5e9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  header h1 {
+    color: #0ea5e9;
+    font-size: 32px;
+    margin: 0;
+  }
+
+  header p {
+    margin: 6px 0 0;
+    font-size: 18px;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 0 20px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 18px;
+    margin-bottom: 30px;
+  }
+
+  .card {
+    height: 110px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.2s ease;
+  }
+
+  .card:hover {
+    transform: scale(1.05);
+  }
+
+  .card.hidden {
+    font-size: 0;
+    cursor: default;
+  }
+
+  .card.selected {
+    border-color: #2563eb;
+  }
+
+  .card.correct {
+    border-color: #22c55e;
+    background: #dcfce7;
+  }
+
+  .card.wrong {
+    border-color: #ef4444;
+    background: #fee2e2;
+  }
+
+  .center {
+    text-align: center;
+  }
+
+  button {
+    background: #0ea5e9;
+    color: white;
+    border: none;
+    padding: 14px 30px;
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #0284c7;
+  }
+
+  .scorecard {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+  }
+</style>
+</head>
+
+<body>
+
+<header>
+  <div>
+    <h1>Memory grid</h1>
+    <p id="levelText">Level 0 of 5</p>
+    <p>Click the cards that weren’t there the first time!</p>
+  </div>
+</header>
+
+<div class="container">
+  <div id="grid" class="grid"></div>
+
+  <div class="center">
+    <button id="actionBtn">Start Level</button>
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+const EMOJIS = ['🐶','🐱','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐸','🐵','🐧'];
+const TOTAL_LEVELS = 5;
+const GRID_SIZE = 12;
+
+/* ================= STATE ================= */
+let level = 0;
+let originalSet = [];
+let fullSet = [];
+let newIndices = new Set();
+let selected = new Set();
+let score = 0;
+let phase = "idle";
+
+/* ================= HELPERS ================= */
+function shuffle(arr) {
+  return [...arr].sort(() => Math.random() - 0.5);
+}
+
+/* ================= GAME LOGIC ================= */
+function startLevel() {
+  selected.clear();
+  newIndices.clear();
+
+  const baseCount = 3 + level;
+  const newCount = 2;
+
+  const shuffled = shuffle(EMOJIS);
+  originalSet = shuffled.slice(0, baseCount);
+  const added = shuffled.slice(baseCount, baseCount + newCount);
+
+  fullSet = shuffle([...originalSet, ...added]);
+
+  fullSet.forEach((e, i) => {
+    if (!originalSet.includes(e)) newIndices.add(i);
+  });
+
+  phase = "memorise";
+  renderGrid(true);
+
+  document.getElementById("actionBtn").style.display = "none";
+
+  setTimeout(() => {
+    phase = "test";
+    renderGrid(false);
+    document.getElementById("actionBtn").innerText = "Submit";
+    document.getElementById("actionBtn").style.display = "inline-block";
+  }, 3000);
+}
+
+function toggleCard(i) {
+  if (phase !== "test") return;
+
+  if (selected.has(i)) selected.delete(i);
+  else selected.add(i);
+
+  renderGrid(false);
+}
+
+function submitLevel() {
+  let correct = true;
+  newIndices.forEach(i => {
+    if (!selected.has(i)) correct = false;
+  });
+  selected.forEach(i => {
+    if (!newIndices.has(i)) correct = false;
+  });
+
+  if (correct) score++;
+
+  showResults();
+
+  setTimeout(() => {
+    level++;
+    if (level < TOTAL_LEVELS) {
+      document.getElementById("levelText").innerText =
+        `Level ${level} of ${TOTAL_LEVELS}`;
+      document.getElementById("actionBtn").innerText = "Start Level";
+      document.getElementById("actionBtn").style.display = "inline-block";
+      phase = "idle";
+      renderGrid(false);
+    } else {
+      showScoreCard();
+    }
+  }, 2000);
+}
+
+/* ================= RENDER ================= */
+function renderGrid(showAll) {
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+
+  for (let i = 0; i < GRID_SIZE; i++) {
+    const card = document.createElement("div");
+    card.className = "card";
+
+    if (showAll && originalSet[i]) {
+      card.textContent = originalSet[i];
+    } else if (!showAll && fullSet[i]) {
+      card.textContent = fullSet[i];
+    } else {
+      card.classList.add("hidden");
+    }
+
+    if (selected.has(i)) card.classList.add("selected");
+
+    card.onclick = () => toggleCard(i);
+    grid.appendChild(card);
+  }
+}
+
+function showResults() {
+  const cards = document.querySelectorAll(".card");
+  cards.forEach((card, i) => {
+    if (newIndices.has(i)) card.classList.add("correct");
+    else if (selected.has(i)) card.classList.add("wrong");
+  });
+}
+
+function showScoreCard() {
+  document.querySelector(".container").innerHTML = `
+    <div class="scorecard">
+      <h2>Game Complete 🎉</h2>
+      <p style="font-size:22px; margin:20px 0;">
+        Final Score: <strong>${score} / ${TOTAL_LEVELS}</strong>
+      </p>
+      <button onclick="location.reload()">Play Again</button>
+    </div>
+  `;
+}
+
+/* ================= BUTTON ================= */
+document.getElementById("actionBtn").onclick = () => {
+  if (phase === "idle") startLevel();
+  else if (phase === "test") submitLevel();
+};
+</script>
+
+</body>
+</html>

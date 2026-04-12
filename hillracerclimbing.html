@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gesture Drive</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      max-width: 520px;
+      text-align: center;
+      padding: 40px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 1.05rem;
+      line-height: 1.6;
+      opacity: 0.9;
+    }
+
+    .buttons {
+      margin-top: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .btn {
+      padding: 14px;
+      font-size: 1.1rem;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+    }
+
+    .btn-primary {
+      background: #22c55e;
+      color: #022c22;
+    }
+
+    .btn-secondary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .note {
+      margin-top: 20px;
+      font-size: 0.9rem;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🚗 Gesture Drive</h1>
+    <p>
+      Control a driving game using <strong>hand gestures</strong> instead of a keyboard.
+      Open your palm to accelerate and make a fist to brake — powered by computer vision.
+    </p>
+   
+    <div class="buttons">
+      <!-- Launch your local Python app -->
+      <button class="btn btn-primary"
+        onclick="alert('Run main.py to start the Gesture Controller')">
+        ▶️ Launch Gesture Controller
+      </button>
+
+      <!-- Free web version -->
+      <a
+        class="btn btn-secondary"
+        href="https://poki.com/en/g/hill-climb-racing-lite"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        🌐 Play Free Web Version
+      </a>
+    </div>
+
+    <div class="note">
+      Webcam required • Works best in good lighting
+    </div>
+  </div>
+</body>
+</html>

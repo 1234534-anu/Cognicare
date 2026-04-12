@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Challenge — Cognicare</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:    #080810;
+  --ink2:   #0d0d1a;
+  --panel:  #0c0c18;
+  --cream:  #f2ede6;
+  --fog:    #9097aa;
+  --fog2:   #5a6070;
+  --iris:   #7b6fff;
+  --iris2:  #a09bff;
+  --green:  #4ade80;
+  --border: rgba(255,255,255,0.07);
+  --glass:  rgba(255,255,255,0.04);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  font-family:'DM Sans',sans-serif;font-weight:300;
+  background:var(--ink);color:var(--cream);
+  min-height:100vh;overflow-x:hidden;cursor:none;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.038'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:999;opacity:0.5;
+}
+
+/* ── CURSOR ── */
+#cur{width:10px;height:10px;border-radius:50%;background:var(--iris);
+  position:fixed;top:0;left:0;pointer-events:none;z-index:1000;
+  transform:translate(-50%,-50%);
+  transition:width .22s ease,height .22s ease,background .22s ease;
+  mix-blend-mode:screen;}
+#cur.big{width:46px;height:46px;background:rgba(123,111,255,.28);}
+
+/* ── AURORA ── */
+.aur{position:fixed;border-radius:50%;pointer-events:none;z-index:0;}
+.aur-a{width:700px;height:700px;
+  background:radial-gradient(ellipse at 40% 50%,rgba(123,111,255,.11) 0%,transparent 65%);
+  top:-200px;left:-180px;animation:da 18s ease-in-out infinite alternate;}
+.aur-b{width:500px;height:500px;
+  background:radial-gradient(ellipse,rgba(74,222,128,.05) 0%,transparent 65%);
+  bottom:-100px;right:-80px;animation:db 22s ease-in-out infinite alternate;}
+@keyframes da{from{transform:translate(0,0) scale(1)}to{transform:translate(55px,40px) scale(1.1)}}
+@keyframes db{from{transform:translate(0,0)}to{transform:translate(-40px,-30px) rotate(10deg)}}
+
+/* ── TOPBAR ── */
+.topbar{
+  position:sticky;top:0;z-index:50;height:62px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 48px;border-bottom:1px solid var(--border);
+  background:rgba(8,8,16,.85);backdrop-filter:blur(16px);
+}
+.topbar-logo{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;
+  letter-spacing:0.06em;text-decoration:none;color:var(--cream);}
+.topbar-logo span{color:var(--iris);}
+.topbar-center{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;
+  letter-spacing:0.04em;color:var(--fog);}
+.topbar-center em{font-style:italic;color:var(--cream);}
+.topbar-right{display:flex;gap:10px;align-items:center;}
+
+/* ── SHARED BUTTON ── */
+.btn{
+  font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:0.13em;
+  text-transform:uppercase;background:none;border:1px solid var(--border);
+  color:var(--fog);padding:9px 20px;border-radius:2px;cursor:none;
+  transition:border-color .25s,color .25s,background .25s;
+}
+.btn:hover{border-color:rgba(123,111,255,.45);color:var(--iris2);}
+.btn.primary{background:var(--iris);color:#fff;border-color:var(--iris);}
+.btn.primary:hover{background:var(--iris2);border-color:var(--iris2);}
+.btn.danger{border-color:rgba(239,68,68,.25);color:rgba(252,165,165,.7);}
+.btn.danger:hover{border-color:rgba(239,68,68,.6);color:#fca5a5;}
+.btn.large{font-size:13px;padding:15px 40px;}
+
+/* ── SCREENS ── */
+.screen{display:none;position:relative;z-index:1;}
+.screen.active{display:block;}
+.page{max-width:1100px;margin:0 auto;padding:48px 48px 80px;}
+
+/* ═══════════════════════════════
+   HOME SCREEN
+═══════════════════════════════ */
+.home-hero{
+  min-height:calc(100vh - 62px);
+  display:flex;flex-direction:column;
+  justify-content:center;align-items:flex-start;
+  padding:0 80px;
+}
+.home-eyebrow{
+  font-size:10px;letter-spacing:0.26em;text-transform:uppercase;
+  color:var(--iris);margin-bottom:24px;
+  opacity:0;animation:fadeUp .8s .2s both;
+}
+.home-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(72px,10vw,130px);
+  font-weight:300;line-height:0.92;letter-spacing:-0.025em;
+  margin-bottom:32px;
+  opacity:0;animation:fadeUp .9s .4s both;
+}
+.home-title em{font-style:italic;color:var(--fog);}
+.home-sub{
+  font-size:16px;color:var(--fog);line-height:1.75;
+  max-width:440px;margin-bottom:48px;
+  opacity:0;animation:fadeUp .9s .6s both;
+}
+.home-btns{
+  display:flex;gap:16px;align-items:center;
+  opacity:0;animation:fadeUp .9s .8s both;
+}
+.home-stat-row{
+  display:flex;gap:40px;margin-top:72px;
+  opacity:0;animation:fadeUp .9s 1s both;
+  border-top:1px solid var(--border);padding-top:32px;
+}
+.home-stat{display:flex;flex-direction:column;gap:4px;}
+.hs-num{
+  font-family:'Cormorant Garamond',serif;
+  font-size:48px;font-weight:300;letter-spacing:-0.02em;line-height:1;
+  color:var(--cream);
+}
+.hs-num span{color:var(--iris);}
+.hs-label{font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--fog2);}
+
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(24px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+/* ═══════════════════════════════
+   HOW TO PLAY
+═══════════════════════════════ */
+.htp-header{margin-bottom:56px;}
+.htp-eyebrow{font-size:10px;letter-spacing:0.26em;text-transform:uppercase;color:var(--iris);margin-bottom:16px;}
+.htp-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(48px,6vw,80px);font-weight:300;
+  letter-spacing:-0.02em;line-height:1.05;
+}
+.htp-title em{font-style:italic;color:var(--fog);}
+
+.htp-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:56px;}
+@media(max-width:700px){.htp-grid{grid-template-columns:1fr;}}
+
+.htp-card{
+  padding:32px 28px;
+  border:1px solid var(--border);border-radius:12px;
+  background:var(--glass);
+  display:flex;gap:20px;align-items:flex-start;
+  transition:border-color .3s;
+}
+.htp-card:hover{border-color:rgba(123,111,255,.25);}
+.htp-num{
+  font-family:'Cormorant Garamond',serif;
+  font-size:42px;font-weight:300;color:var(--iris);
+  line-height:1;flex-shrink:0;width:36px;
+}
+.htp-card-body{}
+.htp-card-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px;font-weight:300;
+  margin-bottom:8px;letter-spacing:-0.01em;
+}
+.htp-card-text{font-size:14px;color:var(--fog);line-height:1.75;}
+
+.htp-types{
+  border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;margin-bottom:56px;
+}
+.htp-types-header{
+  padding:18px 24px;border-bottom:1px solid var(--border);
+  font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--fog2);
+}
+.htp-type-row{
+  display:flex;align-items:center;gap:16px;
+  padding:18px 24px;border-bottom:1px solid var(--border);
+}
+.htp-type-row:last-child{border-bottom:none;}
+.htp-type-icon{font-size:28px;width:40px;text-align:center;flex-shrink:0;}
+.htp-type-name{
+  font-family:'Cormorant Garamond',serif;
+  font-size:20px;font-weight:300;margin-bottom:3px;
+}
+.htp-type-desc{font-size:13px;color:var(--fog);}
+.htp-type-tag{
+  margin-left:auto;font-size:9px;letter-spacing:0.15em;
+  text-transform:uppercase;color:var(--iris);
+  border:1px solid rgba(123,111,255,.25);padding:4px 12px;border-radius:2px;
+  flex-shrink:0;
+}
+
+.htp-footer{
+  display:flex;justify-content:space-between;align-items:center;
+  border-top:1px solid var(--border);padding-top:32px;
+}
+.htp-footer-text{font-size:14px;color:var(--fog);line-height:1.7;max-width:400px;}
+
+/* ═══════════════════════════════
+   LEVELS SCREEN
+═══════════════════════════════ */
+.levels-header{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  margin-bottom:40px;
+}
+.levels-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(48px,6vw,80px);font-weight:300;
+  letter-spacing:-0.02em;line-height:1;
+}
+.levels-title em{font-style:italic;color:var(--fog);}
+.levels-sub{font-size:13px;color:var(--fog);line-height:1.7;max-width:280px;text-align:right;}
+
+/* progress bar */
+.overall-progress{
+  margin-bottom:36px;
+  padding:20px 24px;
+  border:1px solid var(--border);border-radius:10px;
+  background:var(--glass);
+  display:flex;align-items:center;gap:24px;
+}
+.op-label{font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--fog2);flex-shrink:0;}
+.op-bar-wrap{flex:1;height:3px;background:rgba(255,255,255,.07);border-radius:2px;}
+.op-bar{height:100%;background:var(--iris);border-radius:2px;transition:width .6s ease;}
+.op-pct{font-size:15px;color:var(--iris2);font-weight:500;flex-shrink:0;min-width:36px;text-align:right;}
+
+.levels-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+}
+@media(max-width:800px){.levels-grid{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:560px){.levels-grid{grid-template-columns:repeat(2,1fr);}}
+
+.level-card{
+  border:1px solid var(--border);border-radius:12px;
+  padding:22px 18px;background:var(--glass);
+  cursor:none;
+  transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease;
+  position:relative;overflow:hidden;
+}
+.level-card::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 0%,rgba(123,111,255,.12),transparent 70%);
+  opacity:0;transition:opacity .3s;
+}
+.level-card:hover::before{opacity:1;}
+.level-card.unlocked:hover{
+  transform:translateY(-5px);
+  border-color:rgba(123,111,255,.3);
+  box-shadow:0 12px 28px rgba(123,111,255,.12);
+}
+.level-card.completed{
+  border-color:rgba(74,222,128,.22);
+  background:rgba(74,222,128,.05);
+}
+.level-card.completed:hover{
+  border-color:rgba(74,222,128,.45);
+  box-shadow:0 12px 28px rgba(74,222,128,.1);
+}
+.level-card.locked{opacity:.35;cursor:not-allowed;}
+.level-card.current-active{
+  border-color:rgba(123,111,255,.4);
+  background:rgba(123,111,255,.08);
+}
+
+.lc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+.lc-num{
+  font-family:'Cormorant Garamond',serif;
+  font-size:32px;font-weight:300;letter-spacing:-0.02em;line-height:1;
+}
+.lc-icon{font-size:16px;}
+
+.lc-type-tag{
+  font-size:9px;letter-spacing:0.15em;text-transform:uppercase;
+  color:var(--iris);border:1px solid rgba(123,111,255,.22);
+  padding:3px 9px;border-radius:2px;margin-bottom:10px;
+  display:inline-block;
+}
+.level-card.completed .lc-type-tag{color:var(--green);border-color:rgba(74,222,128,.25);}
+
+.lc-desc{font-size:12px;color:var(--fog);line-height:1.6;}
+
+.lc-bar-wrap{position:absolute;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,.05);}
+.lc-bar{height:100%;background:var(--iris);transition:width .4s ease;}
+.level-card.completed .lc-bar{background:var(--green);}
+
+/* ═══════════════════════════════
+   GAME SCREEN
+═══════════════════════════════ */
+.game-page{max-width:1100px;margin:0 auto;padding:32px 40px 80px;}
+
+.level-banner{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:24px;padding:20px 26px;
+  border:1px solid var(--border);border-radius:12px;
+  background:rgba(123,111,255,.06);flex-wrap:wrap;gap:16px;
+}
+.banner-left{display:flex;flex-direction:column;gap:3px;}
+.banner-eyebrow{font-size:9px;letter-spacing:0.26em;text-transform:uppercase;color:var(--iris);}
+.banner-level{
+  font-family:'Cormorant Garamond',serif;
+  font-size:44px;font-weight:300;letter-spacing:-0.02em;line-height:1;
+}
+.banner-level em{font-style:italic;color:var(--fog);}
+.banner-desc{font-size:15px;color:var(--fog);margin-top:2px;}
+
+.stats-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px;}
+.stat-pill{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 16px;border:1px solid var(--border);
+  border-radius:8px;background:var(--glass);flex:1;min-width:110px;
+}
+.stat-label{font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--fog2);}
+.stat-value{font-size:22px;font-weight:500;color:var(--iris2);margin-left:auto;}
+
+.level-complete{
+  display:none;padding:18px 22px;
+  border:1px solid rgba(74,222,128,.25);border-radius:10px;
+  background:rgba(74,222,128,.07);margin-bottom:18px;
+  animation:slideDown .4s ease both;
+}
+.level-complete.show{display:flex;align-items:center;gap:16px;}
+@keyframes slideDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+.lc-done-icon{font-size:26px;flex-shrink:0;}
+.lc-done-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:26px;font-weight:300;color:var(--green);
+}
+.lc-done-sub{font-size:13px;color:var(--fog);margin-top:2px;}
+
+.win-screen{
+  display:none;text-align:center;
+  padding:52px 40px;border:1px solid rgba(123,111,255,.25);
+  border-radius:14px;background:rgba(123,111,255,.05);
+  margin-bottom:24px;animation:slideDown .5s ease both;
+}
+.win-screen.show{display:block;}
+.win-num{
+  font-family:'Cormorant Garamond',serif;
+  font-size:90px;font-weight:300;letter-spacing:-0.04em;line-height:1;
+  color:var(--cream);margin-bottom:8px;
+}
+.win-num sup{font-size:.35em;color:var(--iris);vertical-align:super;letter-spacing:0;}
+.win-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:36px;font-weight:300;letter-spacing:-0.01em;margin-bottom:10px;
+}
+.win-title em{font-style:italic;color:var(--fog);}
+.win-sub{font-size:14px;color:var(--fog);line-height:1.7;margin-bottom:28px;}
+
+/* ── GAME BOARD ── */
+.game-board{display:grid;gap:10px;margin-bottom:24px;perspective:1000px;}
+.board-4{grid-template-columns:repeat(4,1fr);}
+.board-5{grid-template-columns:repeat(5,1fr);}
+.board-6{grid-template-columns:repeat(6,1fr);}
+
+.card{
+  aspect-ratio:.72;cursor:none;position:relative;
+  transform-style:preserve-3d;
+  transition:transform .55s cubic-bezier(.4,0,.2,1);
+  border-radius:10px;
+}
+.card:hover:not(.flipped):not(.matched){transform:translateY(-6px) scale(1.03);}
+.card.flipped{transform:rotateY(180deg);}
+.card.matched{cursor:default;}
+
+.card-face{
+  position:absolute;inset:0;backface-visibility:hidden;
+  border-radius:10px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--border);
+}
+.card-back{
+  background:rgba(123,111,255,.12);
+  border-color:rgba(123,111,255,.22);
+}
+.card-back-pattern{font-size:34px;opacity:.35;user-select:none;}
+.card-front{
+  background:var(--ink2);
+  border-color:rgba(123,111,255,.25);
+  transform:rotateY(180deg);
+  font-size:48px;
+}
+.card.matched .card-front{
+  background:#ffffff;
+  border-color:rgba(255,255,255,.6);
+}
+
+/* playing cards */
+.playing-card{width:100%;height:100%;border-radius:9px;position:relative;padding:8px;}
+.card-value{
+  position:absolute;top:7px;left:9px;
+  font-size:24px;font-weight:500;line-height:1;
+  font-family:'DM Sans',sans-serif;
+}
+.card-suit{font-size:75%;display:block;}
+.card-center{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);font-size:52px;
+}
+.red{color:#e53935;}
+.black{color:#212121;}
+
+/* game controls strip */
+.game-controls{display:flex;gap:10px;flex-wrap:wrap;}
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<div class="aur aur-a"></div>
+<div class="aur aur-b"></div>
+
+<!-- ══════════════════════════════════════════════
+     SHARED TOPBAR
+══════════════════════════════════════════════ -->
+<div class="topbar">
+  <a href="index.html" class="topbar-logo">Cogni<span>care</span></a>
+  <div class="topbar-center" id="topbar-center">Memory <em>Challenge</em></div>
+  <div class="topbar-right" id="topbar-right">
+    <button class="btn" onclick="showScreen('howtoplay')">How to play</button>
+    <button class="btn" onclick="showScreen('levels')">Levels</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 1 — HOME
+══════════════════════════════════════════════ -->
+<div class="screen active" id="screen-home">
+  <div class="home-hero">
+    <p class="home-eyebrow">Memory · Attention · Cognitive Training</p>
+    <h1 class="home-title">Memory<br><em>Challenge.</em></h1>
+    <p class="home-sub">20 progressively harder levels. Flip cards, find pairs, and train your mind — one match at a time.</p>
+    <div class="home-btns">
+      <button class="btn primary large" onclick="goToGame()">Start playing</button>
+      <button class="btn large" onclick="showScreen('howtoplay')">How to play</button>
+      <button class="btn large" onclick="showScreen('levels')">View levels</button>
+    </div>
+    <div class="home-stat-row">
+      <div class="home-stat">
+        <span class="hs-num" id="hs-completed">0<span>/20</span></span>
+        <span class="hs-label">Levels unlocked</span>
+      </div>
+      <div class="home-stat">
+        <span class="hs-num" id="hs-score">0</span>
+        <span class="hs-label">Total score</span>
+      </div>
+      <div class="home-stat">
+        <span class="hs-num" id="hs-next">1</span>
+        <span class="hs-label">Next level</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 2 — HOW TO PLAY
+══════════════════════════════════════════════ -->
+<div class="screen" id="screen-howtoplay">
+  <div class="page">
+    <div class="htp-header">
+      <p class="htp-eyebrow">Guide</p>
+      <h2 class="htp-title">How to <em>play.</em></h2>
+    </div>
+
+    <div class="htp-grid">
+      <div class="htp-card">
+        <div class="htp-num">1</div>
+        <div class="htp-card-body">
+          <div class="htp-card-title">Pick your level</div>
+          <p class="htp-card-text">Start from Level 1 or jump to any unlocked level from the Levels screen. Each level must be completed to unlock the next.</p>
+        </div>
+      </div>
+      <div class="htp-card">
+        <div class="htp-num">2</div>
+        <div class="htp-card-body">
+          <div class="htp-card-title">Flip two cards</div>
+          <p class="htp-card-text">Click any face-down card to reveal it. Then click a second card — if they match, they stay face-up and turn white.</p>
+        </div>
+      </div>
+      <div class="htp-card">
+        <div class="htp-num">3</div>
+        <div class="htp-card-body">
+          <div class="htp-card-title">Find all pairs</div>
+          <p class="htp-card-text">Clear the board by matching every pair. Fewer moves means a higher score. Each level has a different number of pairs.</p>
+        </div>
+      </div>
+      <div class="htp-card">
+        <div class="htp-num">4</div>
+        <div class="htp-card-body">
+          <div class="htp-card-title">Unlock the next</div>
+          <p class="htp-card-text">Complete a level to unlock the next one. Progress is saved automatically — pick up where you left off anytime.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="htp-types">
+      <div class="htp-types-header">Card types you'll encounter</div>
+      <div class="htp-type-row">
+        <div class="htp-type-icon">😊</div>
+        <div>
+          <div class="htp-type-name">Emoji cards</div>
+          <div class="htp-type-desc">Colourful symbols grouped by theme — workspace, nature, food, activities, animals.</div>
+        </div>
+        <span class="htp-type-tag">Levels 1–20</span>
+      </div>
+      <div class="htp-type-row">
+        <div class="htp-type-icon">🃏</div>
+        <div>
+          <div class="htp-type-name">Playing cards</div>
+          <div class="htp-type-desc">Classic suit cards. Match value and suit — harder to remember, more rewarding to find.</div>
+        </div>
+        <span class="htp-type-tag">From level 4</span>
+      </div>
+      <div class="htp-type-row">
+        <div class="htp-type-icon">◈</div>
+        <div>
+          <div class="htp-type-name">Mixed boards</div>
+          <div class="htp-type-desc">Both emoji and playing cards on the same board. The ultimate memory test.</div>
+        </div>
+        <span class="htp-type-tag">From level 11</span>
+      </div>
+    </div>
+
+    <div class="htp-footer">
+      <p class="htp-footer-text">Scoring: each level starts at 100 points. Every move costs 2 points. Minimum score per level is 20.</p>
+      <div style="display:flex;gap:12px;">
+        <button class="btn" onclick="showScreen('home')">← Home</button>
+        <button class="btn primary" onclick="goToGame()">Start playing</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 3 — LEVELS
+══════════════════════════════════════════════ -->
+<div class="screen" id="screen-levels">
+  <div class="page">
+    <div class="levels-header">
+      <div>
+        <p style="font-size:10px;letter-spacing:0.26em;text-transform:uppercase;color:var(--iris);margin-bottom:14px;">Progress</p>
+        <h2 class="levels-title">Choose a<br><em>level.</em></h2>
+      </div>
+      <p class="levels-sub">Complete each level to unlock the next. Your progress is saved automatically.</p>
+    </div>
+
+    <div class="overall-progress">
+      <span class="op-label">Overall</span>
+      <div class="op-bar-wrap"><div class="op-bar" id="op-bar" style="width:0%"></div></div>
+      <span class="op-pct" id="op-pct">0%</span>
+    </div>
+
+    <div class="levels-grid" id="levels-grid"></div>
+
+    <div style="margin-top:32px;border-top:1px solid var(--border);padding-top:24px;">
+      <button class="btn" onclick="showScreen('home')">← Back to home</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 4 — GAME
+══════════════════════════════════════════════ -->
+<div class="screen" id="screen-game">
+  <div class="game-page">
+
+    <div class="level-banner">
+      <div class="banner-left">
+        <span class="banner-eyebrow">Cognitive Training</span>
+        <div class="banner-level" id="banner-level">Level <em>1</em></div>
+        <div class="banner-desc" id="banner-desc">Warm up with 6 emoji pairs</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+        <div class="stat-pill"><span class="stat-label">Level</span><span class="stat-value" id="g-level">1/20</span></div>
+        <div class="stat-pill"><span class="stat-label">Moves</span><span class="stat-value" id="g-moves">0</span></div>
+        <div class="stat-pill"><span class="stat-label">Pairs</span><span class="stat-value" id="g-pairs">0/6</span></div>
+        <div class="stat-pill"><span class="stat-label">Score</span><span class="stat-value" id="g-score">0</span></div>
+      </div>
+    </div>
+
+    <div class="win-screen" id="winScreen">
+      <div class="win-num">20<sup>✓</sup></div>
+      <h2 class="win-title">Incredible! You've <em>mastered</em> all 20 levels!</h2>
+      <p class="win-sub" id="winStats"></p>
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <button class="btn primary" onclick="initLevel(0)">Play again</button>
+        <button class="btn" onclick="showScreen('home')">Home</button>
+      </div>
+    </div>
+
+    <div class="level-complete" id="levelComplete">
+      <span class="lc-done-icon">◆</span>
+      <div>
+        <div class="lc-done-title">Level complete</div>
+        <div class="lc-done-sub" id="levelCompleteText">Great job!</div>
+      </div>
+    </div>
+
+    <div class="game-board board-4" id="gameBoard"></div>
+
+    <div class="game-controls">
+      <button class="btn" id="retryBtn">Retry level</button>
+      <button class="btn" onclick="showScreen('levels')">All levels</button>
+      <button class="btn" onclick="showScreen('home')">Home</button>
+      <button class="btn primary" id="nextLevelBtn" style="display:none;">Next level →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCRIPT
+══════════════════════════════════════════════ -->
+<script>
+/* ── CURSOR ── */
+const cur = document.getElementById('cur');
+document.addEventListener('mousemove', e => {
+  cur.style.left = e.clientX + 'px';
+  cur.style.top  = e.clientY + 'px';
+});
+function hov(els) {
+  if (!els) return;
+  (els.length !== undefined ? Array.from(els) : [els]).forEach(el => {
+    el.addEventListener('mouseenter', () => cur.classList.add('big'));
+    el.addEventListener('mouseleave', () => cur.classList.remove('big'));
+  });
+}
+hov(document.querySelectorAll('a, button'));
+
+/* ── SCREEN ROUTER ── */
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  window.scrollTo(0, 0);
+
+  // Update topbar right buttons contextually
+  const right = document.getElementById('topbar-right');
+  if (name === 'home') {
+    right.innerHTML = `<button class="btn" onclick="showScreen('howtoplay')">How to play</button>
+                       <button class="btn" onclick="showScreen('levels')">Levels</button>`;
+  } else if (name === 'howtoplay') {
+    right.innerHTML = `<button class="btn" onclick="showScreen('home')">Home</button>
+                       <button class="btn" onclick="showScreen('levels')">Levels</button>
+                       <button class="btn primary" onclick="goToGame()">Play</button>`;
+  } else if (name === 'levels') {
+    right.innerHTML = `<button class="btn" onclick="showScreen('home')">Home</button>
+                       <button class="btn primary" onclick="goToGame()">Continue</button>`;
+    renderLevelsGrid();
+  } else if (name === 'game') {
+    right.innerHTML = `<button class="btn" onclick="showScreen('levels')">Levels</button>
+                       <button class="btn danger" id="retryTopBtn">Retry</button>`;
+    document.getElementById('retryTopBtn').addEventListener('click', () => initLevel(currentLevel));
+    hov(document.querySelectorAll('#topbar-right button'));
+  }
+  hov(document.querySelectorAll('#topbar-right button'));
+
+  if (name === 'home') updateHomeStats();
+}
+
+/* ── GAME DATA ── */
+const emojiSets = {
+  workspace: ['☕','💡','🎯','🚀','🎨','🌟','💼','📊','⚡','🔥','✨','🎭','🏆','💻','📱'],
+  nature:    ['🌸','🌈','⭐','🌺','🌻','🍀','🌙','☀️','🌊','🦋','🌵','🌴','🍁','🌷','🌹'],
+  food:      ['🍕','🍰','🍪','🍩','🍔','🍟','🌮','🍦','🍓','🍉','🍌','🍒','🥑','🍇','🍊'],
+  activities:['🎮','🎸','🎬','📚','⚽','🏀','🎵','🎪','🎨','🎯','🎲','🎳','🎺','🎻','🎤'],
+  animals:   ['🐶','🐱','🐼','🦁','🐯','🐨','🦊','🐻','🐸','🦄','🐙','🐝','🦀','🐢','🦉']
+};
+const playingCards = [
+  {value:'A',suit:'♠',color:'black'},{value:'K',suit:'♠',color:'black'},
+  {value:'Q',suit:'♥',color:'red'}, {value:'J',suit:'♥',color:'red'},
+  {value:'10',suit:'♦',color:'red'},{value:'9',suit:'♦',color:'red'},
+  {value:'A',suit:'♣',color:'black'},{value:'K',suit:'♣',color:'black'},
+  {value:'Q',suit:'♠',color:'black'},{value:'J',suit:'♦',color:'red'},
+  {value:'8',suit:'♥',color:'red'}, {value:'7',suit:'♣',color:'black'},
+  {value:'6',suit:'♠',color:'black'},{value:'5',suit:'♥',color:'red'},
+  {value:'4',suit:'♦',color:'red'}
+];
+const levels = [
+  {pairs:6, gridClass:'board-4',type:'emoji',theme:'workspace',description:'Warm up with 6 emoji pairs'},
+  {pairs:8, gridClass:'board-4',type:'emoji',theme:'workspace',description:'Getting warmer — 8 pairs!'},
+  {pairs:10,gridClass:'board-5',type:'emoji',theme:'nature',   description:'Nature vibes — 10 pairs'},
+  {pairs:8, gridClass:'board-4',type:'cards',                  description:'Playing cards appear — 8 pairs'},
+  {pairs:12,gridClass:'board-6',type:'emoji',theme:'food',     description:'Food fun — 12 pairs!'},
+  {pairs:10,gridClass:'board-5',type:'cards',                  description:'More cards — 10 pairs'},
+  {pairs:12,gridClass:'board-6',type:'emoji',theme:'activities',description:'Activity time — 12 pairs'},
+  {pairs:15,gridClass:'board-6',type:'emoji',theme:'animals',  description:'Animal kingdom — 15 pairs!'},
+  {pairs:12,gridClass:'board-6',type:'cards',                  description:'Card master — 12 pairs'},
+  {pairs:15,gridClass:'board-6',type:'emoji',theme:'workspace',description:'Back to work — 15 pairs'},
+  {pairs:12,gridClass:'board-6',type:'mixed',                  description:'Mix it up — emojis & cards!'},
+  {pairs:15,gridClass:'board-6',type:'emoji',theme:'nature',   description:'Nature master — 15 pairs'},
+  {pairs:15,gridClass:'board-6',type:'cards',                  description:'Full deck challenge!'},
+  {pairs:18,gridClass:'board-6',type:'emoji',theme:'food',     description:'Food feast — 18 pairs!'},
+  {pairs:18,gridClass:'board-6',type:'emoji',theme:'activities',description:'Activity overload!'},
+  {pairs:15,gridClass:'board-6',type:'mixed',                  description:'Mixed madness — 15 pairs'},
+  {pairs:18,gridClass:'board-6',type:'emoji',theme:'animals',  description:'Animal adventure!'},
+  {pairs:18,gridClass:'board-6',type:'mixed',                  description:'Ultimate mix — 18 pairs'},
+  {pairs:18,gridClass:'board-6',type:'cards',                  description:'Card expert level!'},
+  {pairs:18,gridClass:'board-6',type:'mixed',                  description:'FINAL CHALLENGE — Master level!'}
+];
+
+/* ── PERSISTENCE ── */
+function loadSave() {
+  try {
+    const s = localStorage.getItem('cognicareMemory');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return { completedLevels: [], totalScore: 0 };
+}
+function saveGame() {
+  localStorage.setItem('cognicareMemory', JSON.stringify({
+    completedLevels: Array.from(completedLevels),
+    totalScore
+  }));
+}
+
+let save = loadSave();
+let completedLevels = new Set(save.completedLevels);
+let totalScore = save.totalScore;
+
+function maxUnlockedLevel() {
+  // levels unlock sequentially; level 0 always unlocked
+  for (let i = 0; i < 20; i++) {
+    if (!completedLevels.has(i)) return i;
+  }
+  return 19;
+}
+
+/* ── HOME STATS ── */
+function updateHomeStats() {
+  const done = completedLevels.size;
+  document.getElementById('hs-completed').innerHTML = `${done}<span>/20</span>`;
+  document.getElementById('hs-score').textContent   = totalScore;
+  document.getElementById('hs-next').textContent    = maxUnlockedLevel() + 1;
+}
+
+/* ── LEVELS GRID ── */
+function renderLevelsGrid() {
+  const grid = document.getElementById('levels-grid');
+  grid.innerHTML = '';
+  const maxUnlocked = maxUnlockedLevel();
+
+  levels.forEach((lvl, i) => {
+    const done     = completedLevels.has(i);
+    const unlocked = i <= maxUnlocked;
+    const isCurrent = i === maxUnlocked && !done;
+
+    const card = document.createElement('div');
+    card.className = 'level-card' +
+      (done     ? ' completed'     : '') +
+      (unlocked && !done ? ' unlocked' : '') +
+      (isCurrent         ? ' current-active' : '') +
+      (!unlocked         ? ' locked' : '');
+
+    const icon = done ? '◆' : unlocked ? '◇' : '·';
+    const typeLabel = lvl.type === 'emoji' ? lvl.theme || 'emoji'
+                    : lvl.type === 'cards' ? 'cards'
+                    : 'mixed';
+
+    card.innerHTML = `
+      <div class="lc-top">
+        <span class="lc-num">${i + 1}</span>
+        <span class="lc-icon" style="color:${done ? 'var(--green)' : unlocked ? 'var(--iris)' : 'var(--fog2)'}">${icon}</span>
+      </div>
+      <span class="lc-type-tag">${typeLabel}</span>
+      <div class="lc-desc">${lvl.description}</div>
+      <div class="lc-bar-wrap">
+        <div class="lc-bar" style="width:${done ? 100 : 0}%"></div>
+      </div>`;
+
+    if (unlocked) {
+      card.addEventListener('click', () => {
+        initLevel(i);
+        showScreen('game');
+      });
+    }
+    grid.appendChild(card);
+  });
+
+  hov(grid.querySelectorAll('.level-card.unlocked, .level-card.completed'));
+
+  // update progress bar
+  const pct = Math.round((completedLevels.size / 20) * 100);
+  document.getElementById('op-bar').style.width = pct + '%';
+  document.getElementById('op-pct').textContent = pct + '%';
+}
+
+/* ── GO TO GAME (continue from where you are) ── */
+function goToGame() {
+  initLevel(maxUnlockedLevel());
+  showScreen('game');
+}
+
+/* ── GAME ENGINE ── */
+let currentLevel = 0;
+let cards = [], flippedCards = [], matchedPairs = 0, moves = 0;
+
+function getCardsForLevel(level) {
+  const cfg = levels[level];
+  const allEmojis = Object.values(emojiSets).flat();
+  let items = [];
+  if (cfg.type === 'emoji')       items = emojiSets[cfg.theme].slice(0, cfg.pairs);
+  else if (cfg.type === 'cards')  items = playingCards.slice(0, cfg.pairs);
+  else {
+    const h = Math.floor(cfg.pairs / 2);
+    items = [...allEmojis.slice(0, h), ...playingCards.slice(0, cfg.pairs - h)];
+  }
+  return [...items, ...items]
+    .map((item, i) => ({ item, id: i }))
+    .sort(() => Math.random() - 0.5);
+}
+
+function initLevel(level) {
+  currentLevel = level;
+  const cfg = levels[level];
+  cards = getCardsForLevel(level);
+  flippedCards = []; matchedPairs = 0; moves = 0;
+
+  document.getElementById('banner-level').innerHTML = `Level <em>${level + 1}</em>`;
+  document.getElementById('banner-desc').textContent = cfg.description;
+  document.getElementById('g-level').textContent = `${level + 1}/20`;
+  document.getElementById('gameBoard').className = `game-board ${cfg.gridClass}`;
+
+  renderBoard();
+  updateStats();
+  document.getElementById('levelComplete').classList.remove('show');
+  document.getElementById('nextLevelBtn').style.display = 'none';
+  document.getElementById('winScreen').classList.remove('show');
+}
+
+function renderBoard() {
+  const board = document.getElementById('gameBoard');
+  board.innerHTML = '';
+  cards.forEach((card, index) => {
+    const el = document.createElement('div');
+    el.className = 'card';
+    const isPC = typeof card.item === 'object' && card.item.value;
+    if (isPC) {
+      el.innerHTML = `
+        <div class="card-face card-back"><div class="card-back-pattern">◈</div></div>
+        <div class="card-face card-front">
+          <div class="playing-card">
+            <div class="card-value ${card.item.color}">${card.item.value}<span class="card-suit">${card.item.suit}</span></div>
+            <div class="card-center ${card.item.color}">${card.item.suit}</div>
+          </div>
+        </div>`;
+    } else {
+      el.innerHTML = `
+        <div class="card-face card-back"><div class="card-back-pattern">◇</div></div>
+        <div class="card-face card-front" style="font-size:clamp(30px,4vw,54px)">${card.item}</div>`;
+    }
+    el.addEventListener('click', () => flipCard(index));
+    board.appendChild(el);
+  });
+  hov(board.querySelectorAll('.card'));
+}
+
+function flipCard(index) {
+  if (flippedCards.length === 2) return;
+  const el = document.querySelectorAll('.card')[index];
+  if (el.classList.contains('flipped') || el.classList.contains('matched')) return;
+  el.classList.add('flipped');
+  flippedCards.push({ index, item: cards[index].item });
+  if (flippedCards.length === 2) { moves++; updateStats(); checkMatch(); }
+}
+
+function checkMatch() {
+  const [c1, c2] = flippedCards;
+  setTimeout(() => {
+    const k1 = typeof c1.item === 'object' ? JSON.stringify(c1.item) : c1.item;
+    const k2 = typeof c2.item === 'object' ? JSON.stringify(c2.item) : c2.item;
+    const els = document.querySelectorAll('.card');
+    if (k1 === k2) {
+      els[c1.index].classList.add('matched');
+      els[c2.index].classList.add('matched');
+      matchedPairs++;
+      updateStats();
+      if (matchedPairs === levels[currentLevel].pairs) completeLevelSuccess();
+    } else {
+      els[c1.index].classList.remove('flipped');
+      els[c2.index].classList.remove('flipped');
+    }
+    flippedCards = [];
+  }, 800);
+}
+
+function updateStats() {
+  document.getElementById('g-moves').textContent = moves;
+  document.getElementById('g-pairs').textContent = `${matchedPairs}/${levels[currentLevel].pairs}`;
+  document.getElementById('g-score').textContent = totalScore;
+}
+
+function completeLevelSuccess() {
+  completedLevels.add(currentLevel);
+  const pts = Math.max(100 - moves * 2, 20);
+  totalScore += pts;
+  saveGame();
+  updateStats();
+
+  document.getElementById('levelComplete').classList.add('show');
+  document.getElementById('levelCompleteText').textContent =
+    `Completed in ${moves} moves · +${pts} points`;
+
+  if (currentLevel < 19) {
+    document.getElementById('nextLevelBtn').style.display = 'inline-block';
+    hov([document.getElementById('nextLevelBtn')]);
+  } else {
+    document.getElementById('winStats').textContent =
+      `Final score: ${totalScore} points across all 20 levels.`;
+    document.getElementById('winScreen').classList.add('show');
+  }
+}
+
+/* ── RETRY BUTTON ── */
+document.getElementById('retryBtn').addEventListener('click', () => initLevel(currentLevel));
+document.getElementById('nextLevelBtn').addEventListener('click', () => {
+  if (currentLevel < 19) { initLevel(currentLevel + 1); }
+});
+
+/* ── INIT ── */
+updateHomeStats();
+</script>
+</body>
+</html>

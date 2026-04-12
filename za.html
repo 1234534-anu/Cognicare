@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cognicare – AI Cognitive Rehabilitation</title>
+
+<style>
+/* GLOBAL */
+:root {
+  --primary: #4f46e5;
+  --accent: #7c83ff;
+  --text-dark: #0f172a;
+  --text-muted: #6b7280;
+  --glass: rgba(255,255,255,0.65);
+  --border-soft: rgba(0,0,0,0.08);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Georgia", serif;
+  background: linear-gradient(to bottom, #dfe8ff 0%, #f5f7ff 50%, #ffffff 100%);
+  overflow-x: hidden;
+  color: #111;
+}
+
+/* NAVBAR */
+.navbar {
+  width: 100%;
+  padding: 32px 80px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 45px;
+}
+
+.logo {
+  font-family: "Inter", sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+nav a {
+  font-family: "Inter", sans-serif;
+  text-decoration: none;
+  color: #333;
+  font-size: 15px;
+  padding-right: 20px;
+}
+
+.demo-btn {
+  background: black;
+  color: white;
+  padding: 10px 26px;
+  border-radius: 22px;
+  border: none;
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* HERO */
+.hero {
+  width: 100%;
+  padding: 60px 80px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  margin-top: 20px;
+}
+
+.hero-left {
+  max-width: 630px;
+  margin-left: 120px;
+  margin-top: 40px;
+}
+
+/* Fixed: removed duplicate h1/p rules, kept the larger values */
+.hero-left h1 {
+  font-size: 76px;
+  line-height: 1.05;
+  font-weight: 500;
+  letter-spacing: -1.5px;
+  margin-bottom: 30px;
+}
+
+.hero-left p {
+  font-family: "Inter", sans-serif;
+  font-size: 20px;
+  line-height: 1.6;
+  color: #555;
+  margin-bottom: 40px;
+}
+
+/* Buttons */
+.button-row {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.btn-black {
+  padding: 14px 30px;
+  background: black;
+  color: #fff;
+  border-radius: 30px;
+  border: none;
+  font-family: "Inter", sans-serif;
+  font-size: 15px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-white {
+  padding: 14px 32px;
+  background: white;
+  color: black;
+  border: 1px solid #ccc;
+  border-radius: 30px;
+  font-family: "Inter", sans-serif;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+/* HERO RIGHT */
+.hero-right {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  margin-top: 10px;
+  margin-left: 80px;
+  perspective: 1000px;
+}
+
+.hero-right img {
+  width: 85%;
+  height: auto;
+  animation: float 4s ease-in-out infinite;
+  transition: transform 0.2s ease-out;
+  filter: drop-shadow(0 8px 20px rgba(0,0,0,0.18));
+}
+
+@keyframes float {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-18px); }
+  100% { transform: translateY(0); }
+}
+
+/* TRUSTED */
+.trusted-section {
+  width: 100%;
+  text-align: center;
+  margin-top: 120px;
+  font-family: "Inter", sans-serif;
+  color: #777;
+}
+
+.divider {
+  width: 75%;
+  height: 1px;
+  background: #ddd;
+  margin: 40px auto;
+}
+
+.logo-row {
+  margin-top: 25px;
+  opacity: 0.55;
+}
+
+/* TEXT TRANSITION — cinematic split panels */
+.text-transition-section {
+  height: 400vh;
+  position: relative;
+}
+
+.scroll-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+}
+
+.scroll-panel-left {
+  width: 50%;
+  background: #0a0a0f;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 80px 70px;
+  position: relative;
+}
+
+.scroll-panel-left::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0;
+  width: 3px;
+  height: var(--bar-h, 0%);
+  background: #4f46e5;
+  transition: height 0.05s linear;
+}
+
+.scroll-step {
+  position: absolute;
+  top: 50%;
+  transform: translateY(calc(-50% + 30px));
+  left: 70px; right: 70px;
+  opacity: 0;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  pointer-events: none;
+}
+
+.scroll-step.active {
+  opacity: 1;
+  transform: translateY(-50%);
+  pointer-events: auto;
+}
+
+.scroll-step .step-label {
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #7c83ff;
+  margin-bottom: 24px;
+  display: block;
+}
+
+.scroll-step h2 {
+  font-size: 52px;
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: -1.5px;
+  color: #ffffff;
+  margin-bottom: 20px;
+}
+
+.scroll-step h2 em {
+  font-style: normal;
+  color: #7c83ff;
+}
+
+.scroll-step p {
+  font-family: "Inter", sans-serif;
+  font-size: 16px;
+  color: #9ca3af;
+  line-height: 1.7;
+  max-width: 380px;
+}
+
+.scroll-panel-right {
+  width: 50%;
+  background: #f0f2ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.scroll-stat {
+  position: absolute;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  transform: scale(0.92);
+}
+
+.scroll-stat.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.scroll-stat .big-num {
+  font-size: 118px;
+  font-weight: 500;
+  letter-spacing: -6px;
+  line-height: 1;
+  color: #0f172a;
+  display: block;
+}
+
+.scroll-stat .big-num span {
+  color: #4f46e5;
+}
+
+.scroll-stat .stat-label {
+  font-family: "Inter", sans-serif;
+  font-size: 15px;
+  color: #6b7280;
+  margin-top: 16px;
+  display: block;
+  letter-spacing: 0.3px;
+}
+
+.step-dots {
+  position: absolute;
+  bottom: 48px;
+  left: 70px;
+  display: flex;
+  gap: 8px;
+}
+
+.step-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #2d2d3a;
+  transition: background 0.3s;
+}
+
+.step-dot.active { background: #7c83ff; }
+
+/* GAMES HEADING */
+.games-heading {
+  text-align: center;
+  margin-top: 140px;
+  margin-bottom: 40px;
+}
+
+.games-heading h2 {
+  font-size: 52px;
+  font-weight: 500;
+  color: #111;
+  margin-bottom: 12px;
+}
+
+.games-heading p {
+  font-family: "Inter", sans-serif;
+  font-size: 17px;
+  color: #666;
+}
+
+/* CARDS */
+.cards-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 60px;
+  margin-bottom: 120px;
+}
+
+.container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  width: 1100px;
+}
+
+.card {
+  background-color: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 25px rgba(0,0,0,0.08);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+}
+
+.card-header img {
+  width: 100%;
+  height: 190px;
+  object-fit: cover;
+}
+
+.card-body {
+  padding: 22px;
+}
+
+.tag {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  color: #fff;
+  text-transform: uppercase;
+  font-family: "Inter", sans-serif;
+}
+
+.tag-teal   { background: #92d4e4; }
+.tag-purple { background: #3d1d94; }
+.tag-pink   { background: #c62bcd; }
+.tag-green  { background: #16a34a; }
+.tag-orange { background: #ea580c; }
+
+.card-body h4 {
+  font-size: 18px;
+  margin: 10px 0 8px;
+}
+
+.card-body p {
+  font-size: 14px;
+  color: #444;
+  margin-bottom: 16px;
+  font-family: "Inter", sans-serif;
+  line-height: 1.5;
+}
+
+.card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+</style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<header class="navbar">
+  <div class="nav-left">
+    <div class="logo">≈ Cognicare</div>
+    <nav>
+      <a href="#">Who We Serve ▾</a>
+      <a href="#">Cognitive Games</a>
+      <a href="#">Research References</a>
+      <a href="#">Dashboard</a>
+      <a href="#">About Us</a>
+    </nav>
+  </div>
+  <div id="auth-area"></div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <h1>AI-powered<br>cognitive rehabilitation</h1>
+    <p>for Alzheimer's care · available 24/7</p>
+    <div class="button-row">
+      <a href="combine.html" class="btn-black">Talk to ASHA</a>
+      <a href="#gamesboard1">
+        <button class="btn-white">Explore Game Plans →</button>
+      </a>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <img src="chat.png" alt="ASHA Chat Interface">
+  </div>
+</section>
+
+<!-- TRUSTED BY -->
+<div class="trusted-section">
+  <div class="divider"></div>
+  <p>Trusted by</p>
+  <div class="logo-row">
+    <img src="truted.png" width="700" alt="Partner logos">
+  </div>
+</div>
+
+<!-- TEXT TRANSITION -->
+<section class="text-transition-section" id="scroll-reveal-section">
+  <div class="scroll-sticky">
+    <div class="scroll-panel-left" id="scroll-left">
+      <div class="scroll-step active" data-step="0">
+        <span class="step-label">The reality</span>
+        <h2>55 million people live with <em>dementia</em> today.</h2>
+        <p>And that number is growing faster than any healthcare system can respond. Care is scarce. Attention is rationed. Families are left guessing.</p>
+      </div>
+      <div class="scroll-step" data-step="1">
+        <span class="step-label">The gap</span>
+        <h2>Most only get <em>a few hours</em> of specialist care per week.</h2>
+        <p>The other 165 hours — patients are without structured support. That's where cognitive decline accelerates unnoticed.</p>
+      </div>
+      <div class="scroll-step" data-step="2">
+        <span class="step-label">The science</span>
+        <h2>Consistent stimulation <em>slows</em> the progression.</h2>
+        <p>Daily cognitive engagement — memory games, reminiscence, sequencing — can delay decline and improve quality of life measurably.</p>
+      </div>
+      <div class="scroll-step" data-step="3">
+        <span class="step-label">Our answer</span>
+        <h2>ASHA is here for <em>all 168 hours.</em></h2>
+        <p>An AI companion trained for Alzheimer's care — adapting to each patient, giving families peace of mind around the clock.</p>
+      </div>
+      <div class="step-dots" id="step-dots">
+        <div class="step-dot active"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+      </div>
+    </div>
+    <div class="scroll-panel-right">
+      <div class="scroll-stat active" data-step="0">
+        <span class="big-num">55<span>M</span></span>
+        <span class="stat-label">people living with dementia worldwide</span>
+      </div>
+      <div class="scroll-stat" data-step="1">
+        <span class="big-num"><span>~</span>3<span>hrs</span></span>
+        <span class="stat-label">of specialist care received per week, on average</span>
+      </div>
+      <div class="scroll-stat" data-step="2">
+        <span class="big-num">32<span>%</span></span>
+        <span class="stat-label">slower decline with daily cognitive stimulation</span>
+      </div>
+      <div class="scroll-stat" data-step="3">
+        <span class="big-num">24<span>/7</span></span>
+        <span class="stat-label">ASHA is available, every day, for every patient</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GAMES SECTION -->
+<section class="games-heading">
+  <h2>Cognitive Games</h2>
+  <p>We're changing how attention, memory, and focus are trained.</p>
+</section>
+
+<section class="cards-section" id="gamesboard1">
+  <div class="container">
+
+    <!-- 1. Simon Says -->
+    <a href="Simon_UI_Project/Home.html" class="card-link">
+      <div class="card">
+        <div class="card-header">
+          <img src="simon.png" alt="Simon Says">
+        </div>
+        <div class="card-body">
+          <span class="tag tag-teal">Sequence Reproduction</span>
+          <h4>Let's Play Simon Says</h4>
+          <p>Working-memory sequence training shown to improve attention and memory in older adults with MCI and early Alzheimer's.</p>
+        </div>
+      </div>
+    </a>
+
+    <!-- 2. Emoji Tiles -->
+    <a href="memory.html" class="card-link">
+      <div class="card">
+        <div class="card-header">
+          <img src="cards.png" alt="Emoji Tiles">
+        </div>
+        <div class="card-body">
+          <span class="tag tag-purple">Memory</span>
+          <h4>Emoji Tiles</h4>
+          <p>Tile-matching games help form new neural connections and strengthen existing ones — an engaging way to improve recall.</p>
+        </div>
+      </div>
+    </a>
+
+    <!-- 3. Time Capsule -->
+    <a href="TimeCapsule_Game/Home.html" class="card-link">
+      <div class="card">
+        <div class="card-header">
+          <img src="download.jpg" alt="Time Capsule">
+        </div>
+        <div class="card-body">
+          <span class="tag tag-pink">Memory Retention</span>
+          <h4>Time Capsule</h4>
+          <p>A therapeutic reminiscence activity — preserving meaningful items and memories to maintain personal legacy as the disease progresses.</p>
+        </div>
+      </div>
+    </a>
+
+    <!-- 4. Memory Tray -->
+    <a href="Memorytray.html" class="card-link">
+      <div class="card">
+        <div class="card-header">
+          <img src="mem.png" alt="Memory Tray">
+        </div>
+        <div class="card-body">
+          <span class="tag tag-green">Active Memory</span>
+          <h4>Memory Tray</h4>
+          <p>Objects like keys and coins are placed on a tray, observed briefly, then covered. Patients recall as many items as possible to train short-term memory.</p>
+        </div>
+      </div>
+    </a>
+
+    <!-- 5. Tap Dance Tiles -->
+    <a href="letsdance.html" class="card-link">
+      <div class="card">
+        <div class="card-header">
+          <img src="dance.png" alt="Tap Dance Tiles">
+        </div>
+        <div class="card-body">
+          <span class="tag tag-orange">Motor Coordination</span>
+          <h4>Tap Dance Tiles</h4>
+          <p>Rhythmic tap-response exercises that improve motor coordination and reaction timing through musical, movement-based play.</p>
+        </div>
+      </div>
+    </a>
+
+    <!-- 6. Hill Racer -->
+    <a href="hillracerclimbing.html" class="card-link">
+      <div class="card">
+        <div class="card-header">
+          <img src="car.png" alt="Hill Racer Climbing">
+        </div>
+        <div class="card-body">
+          <span class="tag tag-orange">Motor Coordination</span>
+          <h4>Hill Racer Climbing</h4>
+          <p>A physics-based driving game that challenges fine motor control and sustained attention while being genuinely fun to play.</p>
+        </div>
+      </div>
+    </a>
+
+    <!-- 7. Fruit Ninja -->
+    <a href="spp.js-gh-pages/examples/fruitNinja/index.html" class="card-link">
+      <div class="card">
+        <div class="card-header">
+          <img src="fruit.png" alt="Fruit Ninja">
+        </div>
+        <div class="card-body">
+          <span class="tag tag-teal">Reaction Speed</span>
+          <h4>Fruit Ninja</h4>
+          <p>Swipe-based slicing game that sharpens hand-eye coordination, reaction speed, and visual tracking in a playful format.</p>
+        </div>
+      </div>
+    </a>
+
+    <!-- 8. Color Swap -->
+    <a href="color.html" class="card-link">
+      <div class="card">
+        <div class="card-header">
+          <img src="color.png" alt="Color Swap">
+        </div>
+        <div class="card-body">
+          <span class="tag tag-purple">Cognitive Flexibility</span>
+          <h4>Color Swap</h4>
+          <p>A Stroop-inspired challenge where players must override automatic responses, training executive function and mental flexibility.</p>
+        </div>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script>
+  // 3D parallax on hero image
+  const img = document.querySelector(".hero-right img");
+  document.addEventListener("mousemove", (e) => {
+    const x = (window.innerWidth / 2 - e.clientX) / 40;
+    const y = (window.innerHeight / 2 - e.clientY) / 40;
+    img.style.transform = `translateY(-10px) rotateX(${y}deg) rotateY(${x}deg)`;
+  });
+
+  // Cinematic scroll panels
+  (function() {
+    const section = document.getElementById("scroll-reveal-section");
+    const leftPanel = document.getElementById("scroll-left");
+    const steps = document.querySelectorAll(".scroll-step");
+    const stats = document.querySelectorAll(".scroll-stat");
+    const dots = document.querySelectorAll(".step-dot");
+    const TOTAL = steps.length;
+
+    function setActive(idx) {
+      steps.forEach((s, i) => s.classList.toggle("active", i === idx));
+      stats.forEach((s, i) => s.classList.toggle("active", i === idx));
+      dots.forEach((d, i) => d.classList.toggle("active", i === idx));
+    }
+
+    window.addEventListener("scroll", () => {
+      const rect = section.getBoundingClientRect();
+      const sectionH = section.offsetHeight;
+      const scrolled = Math.max(-rect.top, 0);
+      const progress = Math.min(scrolled / (sectionH - window.innerHeight), 1);
+
+      const idx = Math.min(Math.floor(progress * TOTAL), TOTAL - 1);
+      setActive(idx);
+
+      const barH = (progress * 100).toFixed(1) + "%";
+      leftPanel.style.setProperty("--bar-h", barH);
+    }, { passive: true });
+  })();
+
+  // Supabase auth
+  const supabaseClient = window.supabase.createClient(
+    "https://uhtjtzivpcumaarkjuss.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVodGp0eml2cGN1bWFhcmtqdXNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0NzE5NjUsImV4cCI6MjA4NjA0Nzk2NX0.JD2yw-qn3HmmsUR3VkMIZIMr76EQ60HAQ7Cjk3whDdQ"
+  );
+
+  const authArea = document.getElementById("auth-area");
+
+  async function renderAuthButton() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+      authArea.innerHTML = `
+        <button class="demo-btn" onclick="googleLogin()">Continue with Google</button>
+      `;
+    } else {
+      authArea.innerHTML = `
+        <div style="display:flex;align-items:center;gap:14px;">
+          <span style="font-family:Inter;font-size:14px;">
+            Hi, ${user.user_metadata.full_name || "User"}
+          </span>
+          <button class="demo-btn" onclick="logout()">Logout</button>
+        </div>
+      `;
+    }
+  }
+
+  async function googleLogin() {
+    await supabaseClient.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.href }
+    });
+  }
+
+  async function logout() {
+    await supabaseClient.auth.signSignOut();
+    window.location.reload();
+  }
+
+  renderAuthButton();
+</script>
+
+</body>
+</html>

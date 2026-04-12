@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Breakout</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="top-bar">
+  <button onclick="setDifficulty('easy')">Easy</button>
+  <button onclick="setDifficulty('normal')">Normal</button>
+  <button onclick="setDifficulty('hard')">Hard</button>
+</div>
+
+<canvas id="game" width="900" height="500"></canvas>
+
+<div class="hint">
+  <b>Click</b> to start · <b>Space</b> to pause
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>

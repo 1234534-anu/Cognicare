@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Colour Cognitive Game</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      text-align: center;
+      background: radial-gradient(circle at top, #e3f2fd, #fdfefe);
+    }
+
+    h1 {
+      padding-top: 25px;
+      font-size: 34px;
+    }
+
+    #card {
+      background: white;
+      width: 430px;
+      margin: 20px auto;
+      padding: 25px;
+      border-radius: 18px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+
+    #gameInfo {
+      font-size: 20px;
+      margin-bottom: 15px;
+    }
+
+    #word {
+      font-size: 72px;
+      font-weight: bold;
+      margin: 25px 0;
+    }
+
+    button {
+      font-size: 22px;
+      padding: 18px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      color: white;
+    }
+
+    .red { background: red; }
+    .blue { background: blue; }
+    .green { background: green; }
+    .yellow { background: goldenrod; }
+
+    #buttons {
+      display: grid;
+      grid-template-columns: repeat(2, 150px);
+      gap: 15px;
+      justify-content: center;
+    }
+
+    #levelScreen, #gameScreen {
+      display: none;
+    }
+
+    #history {
+      margin-top: 20px;
+      font-size: 16px;
+      text-align: left;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Choose the COLOUR you see</h1>
+
+<div id="card">
+
+<!-- LEVEL SELECTION -->
+<div id="levelScreen">
+  <h2>Select Level</h2>
+  <button onclick="startGame('Easy')">Easy</button>
+  <button onclick="startGame('Medium')">Medium</button>
+  <button onclick="startGame('Hard')">Hard</button>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="gameScreen">
+  <div id="gameInfo">
+    Score: <span id="score">0</span> |
+    Moves: <span id="moves">0</span>/20 |
+    Lives: <span id="hearts">❤️❤️❤️❤️❤️</span>
+  </div>
+
+  <div id="word">RED</div>
+
+  <div id="buttons">
+    <button class="red" onclick="checkAnswer('red')">RED</button>
+    <button class="blue" onclick="checkAnswer('blue')">BLUE</button>
+    <button class="green" onclick="checkAnswer('green')">GREEN</button>
+    <button class="yellow" onclick="checkAnswer('yellow')">YELLOW</button>
+  </div>
+</div>
+
+<div id="history"></div>
+
+</div>
+
+<script>
+  const colors = ["red", "blue", "green", "yellow"];
+  let correctColor = "";
+  let lastColor = "";
+  let score = 0;
+  let moves = 0;
+  let lives = 5;
+  let speed = 3000;
+  let mismatchChance = 0.4;
+  let currentLevel = "";
+
+  let isWaiting = false;
+  let nextWordTimer = null;
+
+  let startTime = 0;
+  let reactionTimes = [];
+
+  const correctSound = new Audio("https://www.soundjay.com/buttons/sounds/button-3.mp3");
+  const wrongSound = new Audio("https://www.soundjay.com/buttons/sounds/button-10.mp3");
+
+  const bgMusic = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_7e3e60c2b2.mp3");
+  bgMusic.loop = true;
+  bgMusic.volume = 0.25;
+
+  function speak(text) {
+    speechSynthesis.cancel();
+    speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  }
+
+  function startGame(level) {
+    currentLevel = level;
+
+    if (level === "Easy") {
+      speed = 3000;
+      mismatchChance = 0.4;
+    } else if (level === "Medium") {
+      speed = 2200;
+      mismatchChance = 0.6;
+    } else {
+      speed = 1600;
+      mismatchChance = 0.75;
+    }
+
+    score = 0;
+    moves = 0;
+    lives = 5;
+    reactionTimes = [];
+    isWaiting = false;
+
+    document.getElementById("score").innerText = score;
+    document.getElementById("moves").innerText = moves;
+    document.getElementById("hearts").innerText = "❤️❤️❤️❤️❤️";
+
+    document.getElementById("levelScreen").style.display = "none";
+    document.getElementById("gameScreen").style.display = "block";
+
+    bgMusic.play();
+    speak("Game started. Choose the color you see.");
+    newWord();
+  }
+
+  function newWord() {
+    let word, color;
+
+    do {
+      word = colors[Math.floor(Math.random() * colors.length)];
+      color = colors[Math.floor(Math.random() * colors.length)];
+    } while (color === lastColor);
+
+    if (Math.random() < mismatchChance) {
+      while (word === color) {
+        color = colors[Math.floor(Math.random() * colors.length)];
+      }
+    }
+
+    correctColor = color;
+    lastColor = color;
+
+    const wordDiv = document.getElementById("word");
+    wordDiv.innerText = word.toUpperCase();
+    wordDiv.style.color = correctColor;
+
+    startTime = Date.now();
+  }
+
+  function checkAnswer(choice) {
+    if (isWaiting || moves >= 20 || lives <= 0) return;
+    isWaiting = true;
+
+    moves++;
+    document.getElementById("moves").innerText = moves;
+
+    const reaction = Date.now() - startTime;
+    reactionTimes.push(reaction);
+
+    if (choice === correctColor) {
+      score++;
+      correctSound.play();
+      speak("Correct");
+    } else {
+      lives--;
+      wrongSound.play();
+      speak("Try again");
+      document.getElementById("hearts").innerText = "❤️".repeat(lives);
+    }
+
+    document.getElementById("score").innerText = score;
+
+    if (moves === 20 || lives === 0) {
+      endGame();
+    } else {
+      clearTimeout(nextWordTimer);
+      nextWordTimer = setTimeout(() => {
+        isWaiting = false;
+        newWord();
+      }, speed);
+    }
+  }
+
+  function endGame() {
+    bgMusic.pause();
+    bgMusic.currentTime = 0;
+
+    const avgReaction = Math.round(
+      reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length
+    );
+
+    speak("Game over. Your score is " + score);
+
+    const history = JSON.parse(localStorage.getItem("history") || "[]");
+    history.unshift({
+      date: new Date().toLocaleDateString(),
+      level: currentLevel,
+      score: score,
+      reaction: avgReaction
+    });
+    localStorage.setItem("history", JSON.stringify(history.slice(0, 5)));
+
+    showHistory();
+
+    setTimeout(() => {
+      alert(
+        "Game Over!\n" +
+        "Score: " + score + "\n" +
+        "Average Reaction Time: " + avgReaction + " ms"
+      );
+      document.getElementById("gameScreen").style.display = "none";
+      document.getElementById("levelScreen").style.display = "block";
+    }, 500);
+  }
+
+  function showHistory() {
+    const history = JSON.parse(localStorage.getItem("history") || "[]");
+    let html = "<b>Recent Progress</b><br>";
+    history.forEach(h => {
+      html += `${h.date} | ${h.level} | Score: ${h.score} | Avg RT: ${h.reaction} ms<br>`;
+    });
+    document.getElementById("history").innerHTML = html;
+  }
+
+  showHistory();
+  document.getElementById("levelScreen").style.display = "block";
+</script>
+
+</body>
+</html>

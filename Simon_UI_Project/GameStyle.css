@@ -1,0 +1,104 @@
+body{
+    margin:0;
+    font-family:Segoe UI, Arial;
+    background:linear-gradient(#ffe6b3,#f9c784);
+}
+
+/* HEADER */
+.topBar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 25px;
+    background:#fff1cc;
+    box-shadow:0 3px 10px rgba(0,0,0,0.2);
+}
+.quitBtn{background:#e63946;color:white;}
+.helpBtn{background:#457b9d;color:white;}
+.topBar button{
+    border:none;
+    padding:8px 16px;
+    border-radius:12px;
+}
+
+/* LAYOUT */
+.container{
+    display:flex;
+    justify-content:center;
+    gap:25px;
+    margin-top:40px;
+}
+
+/* CARDS */
+.card{
+    background:#fff8e6;
+    padding:20px;
+    border-radius:20px;
+    box-shadow:0 25px 40px rgba(0,0,0,0.25);
+    text-align:center;
+}
+
+.leftCard{width:180px;}
+.gameCard{width:420px;}
+.rightCard{width:220px;}
+
+.leftCard button{
+    display:block;
+    width:100%;
+    margin:10px 0;
+    padding:10px;
+    border:none;
+    border-radius:12px;
+    background:#e09f3e;
+}
+
+/* BOARD */
+#board{
+    width:280px;
+    height:280px;
+    margin:20px auto;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    grid-template-rows:1fr 1fr;
+    border-radius:50%;
+    overflow:hidden;
+}
+
+.pad{opacity:0.85;}
+.pad.active{opacity:1;}
+
+#green{background:#52b788;}
+#red{background:#e63946;}
+#yellow{background:#f4d35e;}
+#blue{background:#4ea8de;}
+
+/* PROGRESS */
+#progressContainer{
+    height:10px;
+    width:80%;
+    margin:15px auto;
+    background:#ddd;
+    border-radius:10px;
+}
+#progressBar{
+    height:100%;
+    width:0%;
+    background:#52b788;
+    border-radius:10px;
+}
+
+/* MODAL */
+.modal{
+    display:none;
+    position:fixed;
+    top:0;left:0;right:0;bottom:0;
+    background:rgba(0,0,0,0.5);
+}
+.modalContent{
+    background:#fff8e6;
+    width:350px;
+    margin:120px auto;
+    padding:25px;
+    border-radius:18px;
+    text-align:center;
+}

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Time Capsule - Personalized Jigsaw</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f0f0f0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 0;
+        padding: 20px;
+    }
+    h1 { margin-bottom: 10px; }
+    canvas { border: 2px solid #333; background: #fff; margin-top: 20px; }
+    #controls { margin-top: 10px; }
+    button { padding: 8px 12px; margin-left: 5px; }
+</style>
+</head>
+<body>
+
+<h1>🧩 Time Capsule</h1>
+
+<div id="controls">
+    <input type="file" id="upload" accept="image/*">
+    <label>Pieces:
+        <select id="pieces">
+            <option value="4">4</option>
+            <option value="6">6</option>
+            <option value="9">9</option>
+        </select>
+    </label>
+    <button id="start">Start Puzzle</button>
+    <label>
+        <input type="checkbox" id="ghost"> Ghost Overlay
+    </label>
+</div>
+
+<canvas id="puzzleCanvas" width="600" height="600"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+<script>
+const canvas = document.getElementById("puzzleCanvas");
+const ctx = canvas.getContext("2d");
+let image = new Image();
+let pieces = [];
+let pieceSize;
+let ghostOverlay = false;
+
+// Upload image
+document.getElementById("upload").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    image.src = URL.createObjectURL(file);
+});
+
+// Start puzzle
+document.getElementById("start").addEventListener("click", () => {
+    const n = parseInt(document.getElementById("pieces").value);
+    ghostOverlay = document.getElementById("ghost").checked;
+    createPuzzle(n);
+});
+
+// Create puzzle pieces and target boxes
+function createPuzzle(n) {
+    pieces = [];
+    pieceSize = canvas.width / Math.sqrt(n);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const sqrtN = Math.sqrt(n);
+    for (let row = 0; row < sqrtN; row++) {
+        for (let col = 0; col < sqrtN; col++) {
+            const piece = {
+                sx: (image.width / sqrtN) * col,
+                sy: (image.height / sqrtN) * row,
+                sWidth: image.width / sqrtN,
+                sHeight: image.height / sqrtN,
+                x: Math.random() * (canvas.width - pieceSize),
+                y: Math.random() * (canvas.height - pieceSize),
+                width: pieceSize,
+                height: pieceSize,
+                correctX: col * pieceSize,
+                correctY: row * pieceSize,
+                placed: false
+            };
+            pieces.push(piece);
+        }
+    }
+    drawPieces();
+}
+
+// Draw pieces and bounding boxes
+function drawPieces() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw bounding frame
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+    // Draw ghost overlay
+    if (ghostOverlay) {
+        ctx.globalAlpha = 0.2;
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 1;
+    }
+
+    // Draw target boxes
+    pieces.forEach(piece => {
+        ctx.strokeStyle = piece.placed ? "green" : "rgba(0,0,0,0.2)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(piece.correctX, piece.correctY, piece.width, piece.height);
+    });
+
+    // Draw pieces
+    pieces.forEach(piece => {
+        ctx.drawImage(image, piece.sx, piece.sy, piece.sWidth, piece.sHeight,
+                      piece.x, piece.y, piece.width, piece.height);
+    });
+
+    if (isPuzzleComplete()) onPuzzleComplete();
+}
+
+// Drag & drop with bounding and snapping
+interact(canvas).draggable({
+    listeners: {
+        move(event) {
+            const rect = canvas.getBoundingClientRect();
+            const mx = event.clientX - rect.left;
+            const my = event.clientY - rect.top;
+
+            pieces.forEach(piece => {
+                // Only drag if mouse is over piece
+                if (!piece.placed &&
+                    mx > piece.x && mx < piece.x + piece.width &&
+                    my > piece.y && my < piece.y + piece.height) {
+
+                    piece.x += event.dx;
+                    piece.y += event.dy;
+
+                    // Bounding frame
+                    piece.x = Math.max(0, Math.min(piece.x, canvas.width - piece.width));
+                    piece.y = Math.max(0, Math.min(piece.y, canvas.height - piece.height));
+
+                    // Snap to correct position
+                    if (Math.abs(piece.x - piece.correctX) < 20 &&
+                        Math.abs(piece.y - piece.correctY) < 20) {
+                        piece.x = piece.correctX;
+                        piece.y = piece.correctY;
+                        piece.placed = true;
+                        // Feedback
+                        showFeedback("Super! ✅", piece.correctX + piece.width/2, piece.correctY + piece.height/2);
+                    }
+
+                    drawPieces();
+                }
+            });
+        }
+    }
+});
+
+// Show temporary feedback text
+function showFeedback(text, x, y) {
+    ctx.save();
+    ctx.font = "20px Arial";
+    ctx.fillStyle = "green";
+    ctx.textAlign = "center";
+    ctx.fillText(text, x, y);
+    ctx.restore();
+
+    // Remove after 1 second
+    setTimeout(drawPieces, 1000);
+}
+
+// Check puzzle completion
+function isPuzzleComplete() {
+    return pieces.every(p => p.placed);
+}
+
+// On puzzle complete
+function onPuzzleComplete() {
+    if (window.puzzleFinished) return;
+    window.puzzleFinished = true;
+    alert("🎉 Congratulations! Puzzle Completed!");
+}
+
+</script>
+
+</body>
+</html>

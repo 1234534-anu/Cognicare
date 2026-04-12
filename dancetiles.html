@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Follow the Light</title>
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = "https://qzbydtiwleswazfzsqtp.supabase.co";
+  const SUPABASE_KEY =
+    "sb_publishable_uBg6lQPOqdvVUb8kg4MOkA_Hx_1srIK";
+
+  const supabaseClient = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+</script>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: #f0f4f8;
+}
+
+.app-wrapper {
+  min-height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 🔍 ZOOMED GAME PANE */
+.game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.5rem;
+  padding: 3rem;
+  transform: scale(1.15);
+  transform-origin: center;
+}
+
+.game-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.instruction {
+  font-size: 1.4rem;
+  opacity: 0.8;
+}
+
+.level-info {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* GRID */
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  padding: 2rem;
+  border-radius: 1rem;
+  background: #ffffff;
+  border: 3px solid #cbd5e1;
+  max-width: 620px;
+  width: 100%;
+}
+
+.grid-cell {
+  aspect-ratio: 1;
+  border-radius: 1rem;
+  background: #94a3b8;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+}
+
+.grid-cell:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+/* SEQUENCE */
+.grid-cell.lit {
+  background: #fbbf24 !important;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* FEEDBACK */
+.grid-cell.correct {
+  background: #22c55e !important;
+  box-shadow: 0 0 25px rgba(34,197,94,0.9);
+  transform: scale(1.15);
+}
+
+.grid-cell.wrong {
+  background: #ef4444 !important;
+  box-shadow: 0 0 25px rgba(239,68,68,0.9);
+  transform: scale(1.1);
+}
+
+/* BUTTON */
+.start-button {
+  padding: 1rem 2.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  background: #4299e1;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+<div class="app-wrapper">
+  <div class="game-container" id="gameContainer">
+    <h1 class="game-title">Follow the Light</h1>
+    <p class="instruction">Tap the glowing square</p>
+    <div class="level-info" id="levelInfo">Ready to start</div>
+
+    <div class="grid-container" id="gridContainer"></div>
+
+    <button class="start-button" id="startButton">Start Game</button>
+  </div>
+</div>
+
+<script>
+let gameState = {
+  currentLevel: 1,
+  sequence: [],
+  index: 0,
+  isShowing: false,
+  isPlaying: false,
+  session: {
+    correct: 0,
+    total: 0,
+    latencies: [],
+    startTime: null
+  }
+};
+
+function createGrid() {
+  const grid = document.getElementById("gridContainer");
+  grid.innerHTML = "";
+  for (let i = 0; i < 9; i++) {
+    const btn = document.createElement("button");
+    btn.className = "grid-cell";
+    btn.dataset.index = i;
+    btn.onclick = () => handleClick(i);
+    grid.appendChild(btn);
+  }
+}
+
+function startGame() {
+  gameState.currentLevel = 1;
+  gameState.session = { correct: 0, total: 0, latencies: [], startTime: null };
+  document.getElementById("startButton").style.display = "none";
+  nextLevel();
+}
+
+function nextLevel() {
+  if (gameState.currentLevel > 6) {
+    endGame();
+    return;
+  }
+
+  gameState.sequence = Array.from({ length: gameState.currentLevel },
+    () => Math.floor(Math.random() * 9)
+  );
+  gameState.index = 0;
+
+  document.getElementById("levelInfo").textContent =
+    `Level ${gameState.currentLevel} – Watch`;
+
+  showSequence();
+}
+
+async function showSequence() {
+  gameState.isShowing = true;
+  disableGrid(true);
+
+  for (const idx of gameState.sequence) {
+    light(idx);
+    await delay(700);
+  }
+
+  document.getElementById("levelInfo").textContent = "Your turn";
+  await delay(800); // 🧠 thinking time
+
+  document.getElementById("levelInfo").textContent = "Tap the pattern";
+  gameState.isShowing = false;
+  gameState.session.startTime = Date.now();
+  disableGrid(false);
+}
+
+function handleClick(i) {
+  if (gameState.isShowing) return;
+
+  const latency = (Date.now() - gameState.session.startTime) / 1000;
+  gameState.session.latencies.push(latency);
+  gameState.session.total++;
+
+  const expected = gameState.sequence[gameState.index];
+
+  if (i === expected) {
+    gameState.session.correct++;
+    feedback(i, true);
+    gameState.index++;
+
+    if (gameState.index === gameState.sequence.length) {
+      gameState.currentLevel++;
+      setTimeout(nextLevel, 800);
+    } else {
+      gameState.session.startTime = Date.now();
+    }
+  } else {
+    feedback(i, false);
+    gameState.currentLevel++;
+    setTimeout(nextLevel, 800);
+  }
+}
+
+function light(i) {
+  const cell = document.querySelector(`[data-index="${i}"]`);
+  cell.classList.add("lit");
+  setTimeout(() => cell.classList.remove("lit"), 500);
+}
+
+function feedback(i, correct) {
+  const cell = document.querySelector(`[data-index="${i}"]`);
+  cell.classList.add(correct ? "correct" : "wrong");
+  setTimeout(() => {
+    cell.classList.remove("correct", "wrong");
+  }, 450);
+}
+
+function disableGrid(disabled) {
+  document.querySelectorAll(".grid-cell")
+    .forEach(c => c.disabled = disabled);
+}
+
+function delay(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+async function endGame() {
+  const avgLatency =
+    gameState.session.latencies.reduce((a,b)=>a+b,0) /
+    gameState.session.latencies.length || 0;
+
+  const accuracy =
+    gameState.session.total > 0
+      ? gameState.session.correct / gameState.session.total
+      : 0;
+
+  const mci = Math.round(200 + accuracy * (1 - avgLatency / 4) * 800);
+
+  await supabaseClient.from("follow_the_light_sessions").insert({
+    level: gameState.currentLevel - 1,
+    correct_taps: gameState.session.correct,
+    total_taps: gameState.session.total,
+    avg_latency: avgLatency,
+    mci_score: mci,
+    completed: true
+  });
+
+  alert(`Game Complete!\nMCI Score: ${mci}`);
+  location.reload();
+}
+
+document.getElementById("startButton").onclick = startGame;
+createGrid();
+</script>
+</body>
+</html>

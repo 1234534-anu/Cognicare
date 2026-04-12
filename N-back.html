@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>N-Back Brain Trainer — Alzheimer's Brain Development Game</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; color: #1a1a1a; }
+    .container { width: 100%; max-width: 700px; }
+    .app-title { text-align: center; font-size: 26px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+    .app-sub { text-align: center; font-size: 14px; color: #666; margin-bottom: 20px; }
+    .tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; }
+    .tab { padding: 9px 22px; border-radius: 24px; font-size: 14px; font-weight: 500; cursor: pointer; border: 1.5px solid #d0d5dd; background: #fff; color: #555; transition: all 0.15s; }
+    .tab.active { background: #185FA5; border-color: #185FA5; color: #fff; }
+    .tab:hover:not(.active) { background: #f5f7fa; }
+    .card { background: #fff; border-radius: 16px; border: 1px solid #e4e7ec; padding: 24px; margin-bottom: 16px; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+    .stat { background: #f8f9fb; border-radius: 10px; padding: 10px 8px; text-align: center; }
+    .stat-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .stat-val { font-size: 24px; font-weight: 700; color: #1a1a1a; }
+    .level-wrap { display: flex; justify-content: center; margin-bottom: 14px; }
+    .level-badge { display: inline-flex; align-items: center; gap: 8px; background: #EBF3FC; color: #0C447C; border-radius: 20px; padding: 5px 16px; font-size: 14px; font-weight: 600; }
+    .level-dot { width: 8px; height: 8px; border-radius: 50%; background: #185FA5; }
+    .timer-bar-wrap { background: #e8ecf0; border-radius: 4px; height: 8px; margin-bottom: 14px; overflow: hidden; }
+    .timer-bar { height: 100%; border-radius: 4px; background: #185FA5; transition: width 1s linear, background 0.3s; }
+    .seq-wrap { text-align: center; margin-bottom: 14px; }
+    .seq-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+    .seq-dots { display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #dde1e7; transition: background 0.2s; }
+    .dot.done { background: #185FA5; }
+    .dot.active { background: #3B6D11; }
+    .grid-wrap { display: flex; justify-content: center; margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 100px); grid-template-rows: repeat(3, 100px); gap: 8px; }
+    .cell { border-radius: 12px; border: 1.5px solid #dde1e7; background: #f8f9fb; transition: background 0.15s, border-color 0.15s, transform 0.1s; }
+    .cell.active  { background: #185FA5; border-color: #185FA5; transform: scale(1.04); }
+    .cell.correct { background: #3B6D11; border-color: #3B6D11; }
+    .cell.wrong   { background: #A32D2D; border-color: #A32D2D; }
+    .hidden { display: none !important; }
+    .instruction { text-align: center; font-size: 15px; color: #333; background: #f8f9fb; border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; min-height: 46px; display: flex; align-items: center; justify-content: center; line-height: 1.4; }
+    .feedback { text-align: center; font-size: 15px; font-weight: 600; min-height: 26px; margin-bottom: 6px; }
+    .feedback.good { color: #3B6D11; }
+    .feedback.bad  { color: #A32D2D; }
+    .encourage { text-align: center; font-size: 13px; color: #666; min-height: 20px; margin-bottom: 14px; }
+    .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
+    button { border: 1.5px solid #d0d5dd; border-radius: 10px; padding: 11px 24px; font-size: 15px; font-weight: 600; cursor: pointer; background: #fff; color: #333; transition: background 0.12s, transform 0.08s; }
+    button:hover { background: #f5f7fa; }
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    button.primary { background: #185FA5; color: #fff; border-color: #185FA5; }
+    button.primary:hover { background: #0C447C; }
+    button.match-btn { background: #3B6D11; color: #EAF3DE; border-color: #3B6D11; font-size: 17px; padding: 13px 36px; }
+    button.match-btn:hover { background: #27500A; }
+    button.nomatch-btn { background: #A32D2D; color: #FCEBEB; border-color: #A32D2D; font-size: 17px; padding: 13px 36px; }
+    button.nomatch-btn:hover { background: #791F1F; }
+    button.match-btn:disabled, button.nomatch-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .report-card { background: #f8f9fb; border-radius: 14px; border: 1px solid #e4e7ec; padding: 20px; margin-top: 14px; }
+    .report-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 14px; color: #1a1a1a; }
+    .report-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+    .report-item { background: #fff; border-radius: 10px; padding: 12px; border: 1px solid #e4e7ec; text-align: center; }
+    .report-item .rl { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+    .report-item .rv { font-size: 22px; font-weight: 700; color: #1a1a1a; }
+    .prog-label { font-size: 12px; color: #666; margin-bottom: 6px; }
+    .prog-wrap { background: #e0e4ea; border-radius: 4px; height: 10px; overflow: hidden; margin-bottom: 12px; }
+    .prog-bar { height: 100%; border-radius: 4px; background: #185FA5; transition: width 0.6s; }
+    .report-msg { font-size: 15px; color: #333; text-align: center; font-weight: 500; margin-bottom: 14px; line-height: 1.5; }
+    .n-controls { display: flex; align-items: center; gap: 12px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
+    .n-controls span { font-size: 14px; color: #555; }
+    .tut-step { background: #f8f9fb; border-radius: 12px; padding: 16px; margin-bottom: 12px; border-left: 4px solid #185FA5; }
+    .tut-step h4 { font-size: 15px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px; }
+    .tut-step p { font-size: 14px; color: #444; line-height: 1.6; }
+    .tut-step .example { background: #EBF3FC; border-radius: 8px; padding: 10px 12px; margin-top: 8px; font-size: 13px; color: #0C447C; font-weight: 500; }
+    .gentle-nudge { background: #EBF3FC; border: 1.5px solid #9EC5E8; border-radius: 10px; padding: 10px 16px; text-align: center; font-size: 14px; color: #0C447C; font-weight: 500; margin-bottom: 10px; display: none; }
+    .gentle-nudge.show { display: block; }
+    @media (max-width: 500px) {
+      .grid { grid-template-columns: repeat(3, 80px); grid-template-rows: repeat(3, 80px); }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .report-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="app-title">N-Back Brain Trainer</div>
+  <div class="app-sub">Alzheimer's Brain Development — Working Memory Exercise</div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('game')">Game</div>
+    <div class="tab" onclick="showTab('tutorial')">How to Play</div>
+  </div>
+
+  <!-- GAME TAB -->
+  <div id="tab-game">
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><div class="stat-label">Score</div><div class="stat-val" id="score">0</div></div>
+        <div class="stat"><div class="stat-label">Streak</div><div class="stat-val" id="streak">0</div></div>
+        <div class="stat"><div class="stat-label">Accuracy</div><div class="stat-val" id="accuracy">—</div></div>
+        <div class="stat"><div class="stat-label">Time</div><div class="stat-val" id="timer">120</div></div>
+      </div>
+
+      <div class="level-wrap">
+        <div class="level-badge"><div class="level-dot"></div><span id="level-badge">2-Back Level</span></div>
+      </div>
+
+      <div class="timer-bar-wrap"><div class="timer-bar" id="timer-bar" style="width:100%"></div></div>
+
+      <div class="seq-wrap">
+        <div class="seq-label">Trial progress</div>
+        <div class="seq-dots" id="seq-dots"></div>
+      </div>
+
+      <div class="grid-wrap">
+        <div class="grid" id="grid">
+          <div class="cell" data-i="0"></div><div class="cell" data-i="1"></div><div class="cell" data-i="2"></div>
+          <div class="cell" data-i="3"></div><div class="cell" data-i="4"></div><div class="cell" data-i="5"></div>
+          <div class="cell" data-i="6"></div><div class="cell" data-i="7"></div><div class="cell" data-i="8"></div>
+        </div>
+      </div>
+
+      <div class="gentle-nudge" id="gentle-nudge">💙 No worries — take your time. The next square is coming.</div>
+
+      <div class="instruction" id="instruction">Press <strong>Start Game</strong> to begin. Watch where the blue square appears and remember it!</div>
+      <div class="feedback" id="feedback"></div>
+      <div class="encourage" id="encourage"></div>
+
+      <div class="btn-row">
+        <button id="start-btn" class="primary" onclick="startGame()">Start Game</button>
+        <button id="match-btn" class="match-btn hidden" onclick="respond(true)">✓ Match</button>
+        <button id="nomatch-btn" class="nomatch-btn hidden" onclick="respond(false)">✗ No Match</button>
+      </div>
+
+      <div class="n-controls">
+        <span>Difficulty:</span>
+        <button id="ndown-btn" onclick="changeN(-1)" disabled>N− Easier</button>
+        <button id="nup-btn"   onclick="changeN(1)"  disabled>N+ Harder</button>
+      </div>
+    </div>
+
+    <div id="report-area" class="hidden">
+      <div class="report-card">
+        <h3>Session Report</h3>
+        <div class="report-grid">
+          <div class="report-item"><div class="rl">Score</div><div class="rv" id="r-score">0</div></div>
+          <div class="report-item"><div class="rl">N-Level</div><div class="rv" id="r-level">2</div></div>
+          <div class="report-item"><div class="rl">Accuracy</div><div class="rv" id="r-acc">0%</div></div>
+          <div class="report-item"><div class="rl">Best Streak</div><div class="rv" id="r-streak">0</div></div>
+          <div class="report-item"><div class="rl">Correct</div><div class="rv" id="r-hits">0</div></div>
+          <div class="report-item"><div class="rl">Answered</div><div class="rv" id="r-answered">0</div></div>
+        </div>
+        <div class="prog-label">Accuracy reached</div>
+        <div class="prog-wrap"><div class="prog-bar" id="r-prog" style="width:0%"></div></div>
+        <div class="report-msg" id="r-message"></div>
+        <div class="btn-row">
+          <button class="primary" onclick="resetGame()">Play Again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TUTORIAL TAB -->
+  <div id="tab-tutorial" class="hidden">
+    <div class="card">
+      <div style="font-size:18px;font-weight:700;margin-bottom:16px;">How to Play N-Back</div>
+
+      <div class="tut-step">
+        <h4>Step 1 — Watch the grid</h4>
+        <p>A blue square appears on a 3×3 grid, one position at a time. Your only job is to <strong>remember where it appeared</strong>. Each square stays visible for <strong>3 seconds</strong> — no rush.</p>
+      </div>
+
+      <div class="tut-step">
+        <h4>Step 2 — Compare N steps back</h4>
+        <p>In <strong>2-Back</strong>, when you see Trial 3, compare it to Trial 1. In <strong>3-Back</strong>, compare Trial 4 to Trial 1.</p>
+        <div class="example">Example (2-Back): Trial 1 = Top-Left → Trial 3 = Top-Left → MATCH! Press "Match".</div>
+      </div>
+
+      <div class="tut-step">
+        <h4>Step 3 — Press a button when you're ready</h4>
+        <p>Press <strong style="color:#3B6D11">Match</strong> or <strong style="color:#A32D2D">No Match</strong> while the blue square is showing. If you're not sure, that's completely fine — the next square will appear automatically.</p>
+        <div class="example">💙 There is no penalty for not answering. Just do your best!</div>
+      </div>
+
+      <div class="tut-step">
+        <h4>Step 4 — Scoring and levels</h4>
+        <p>Correct answer = points + streak bonus. Hit <strong>5 correct in a row</strong> and level increases. Game lasts <strong>2 minutes</strong>.</p>
+        <div class="example">
+          Correct = N × 10 points + streak bonus<br>
+          5-streak = level up (harder!)<br>
+          3 errors in a row = level down (easier)
+        </div>
+      </div>
+
+      <div class="tut-step" style="border-left-color:#3B6D11;">
+        <h4>Why this trains your brain</h4>
+        <p>N-Back directly exercises <strong>working memory</strong> — the brain's short-term scratch pad. Research shows regular N-Back training can slow cognitive decline and improve attention, focus, and processing speed.</p>
+      </div>
+
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="primary" onclick="showTab('game')">Go to Game →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SQUARE_VISIBLE_MS  = 3000;
+  const INTER_TRIAL_GAP_MS = 1000;
+  const FEEDBACK_LINGER_MS = 1000;
+  const TOTAL_TIME         = 120;
+
+  let audioCtx = null;
+  function getAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+  function playTone(freq, dur, type='sine', vol=0.18) {
+    try {
+      const a = getAudio(), o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = type; o.frequency.setValueAtTime(freq, a.currentTime);
+      g.gain.setValueAtTime(vol, a.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+      o.start(); o.stop(a.currentTime + dur);
+    } catch(e) {}
+  }
+  function playCorrect()  { playTone(880,0.1); setTimeout(()=>playTone(1100,0.1),90); }
+  function playWrong()    { playTone(220,0.22,'sawtooth',0.12); }
+  function playShow()     { playTone(440,0.07,'sine',0.07); }
+  function playLevelUp()  { [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.14),i*85)); }
+
+  let N = 2, score = 0, streak = 0, bestStreak = 0;
+  let totalAnswered = 0, correctAnswers = 0;
+  let sequence = [], currentIdx = 0, gameActive = false;
+  let waitingForResponse = false;
+  let timerInterval = null, showTimeout = null, timeLeft = TOTAL_TIME;
+  const ENCOURAGEMENTS = ['Well done!','Keep going!','Great recall!','In the zone!','Sharp mind!','Excellent!','You got it!','Wonderful!'];
+
+  function showTab(tab) {
+    document.getElementById('tab-game').classList.toggle('hidden', tab !== 'game');
+    document.getElementById('tab-tutorial').classList.toggle('hidden', tab !== 'tutorial');
+    document.querySelectorAll('.tab').forEach((t,i) => {
+      t.classList.toggle('active', (i===0 && tab==='game') || (i===1 && tab==='tutorial'));
+    });
+  }
+
+  function changeN(delta) {
+    N = Math.max(1, Math.min(5, N + delta));
+    document.getElementById('level-badge').textContent = N + '-Back Level';
+  }
+
+  function buildSequence(len) {
+    const seq = [];
+    for (let i = 0; i < len; i++) {
+      let cell = Math.floor(Math.random() * 9);
+      if (i >= N && Math.random() < 0.38) cell = seq[i - N];
+      seq.push(cell);
+    }
+    return seq;
+  }
+
+  function updateDots() {
+    const d = document.getElementById('seq-dots');
+    d.innerHTML = '';
+    for (let i = 0; i < sequence.length; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'dot' + (i < currentIdx ? ' done' : i === currentIdx ? ' active' : '');
+      d.appendChild(dot);
+    }
+  }
+
+  function clearCells() {
+    document.querySelectorAll('.cell').forEach(c => c.classList.remove('active','correct','wrong'));
+  }
+
+  function highlightCell(idx, cls) {
+    clearCells();
+    if (idx !== null) document.querySelector(`.cell[data-i="${idx}"]`).classList.add(cls);
+  }
+
+  function setButtons(enabled) {
+    document.getElementById('match-btn').disabled   = !enabled;
+    document.getElementById('nomatch-btn').disabled = !enabled;
+  }
+
+  function hideNudge() {
+    document.getElementById('gentle-nudge').classList.remove('show');
+  }
+
+  function showTrial() {
+    if (!gameActive || currentIdx >= sequence.length) { endGame(); return; }
+
+    waitingForResponse = false;
+    hideNudge();
+    document.getElementById('feedback').textContent = '';
+
+    const cell = sequence[currentIdx];
+    updateDots();
+    playShow();
+
+    if (currentIdx < N) {
+      document.getElementById('instruction').innerHTML =
+        `<strong>Memorising…</strong>&nbsp; Judgement starts at trial ${N + 1}`;
+      document.getElementById('match-btn').classList.add('hidden');
+      document.getElementById('nomatch-btn').classList.add('hidden');
+
+      highlightCell(cell, 'active');
+
+      showTimeout = setTimeout(() => {
+        clearCells();
+        currentIdx++;
+        setTimeout(showTrial, INTER_TRIAL_GAP_MS);
+      }, SQUARE_VISIBLE_MS);
+
+    } else {
+      document.getElementById('instruction').innerHTML =
+        `Does this match <strong>${N} step${N>1?'s':''} ago</strong>? Press Match or No Match — or just watch if you're not sure.`;
+      document.getElementById('match-btn').classList.remove('hidden');
+      document.getElementById('nomatch-btn').classList.remove('hidden');
+      setButtons(true);
+      waitingForResponse = true;
+
+      highlightCell(cell, 'active');
+
+      showTimeout = setTimeout(() => {
+        if (waitingForResponse) {
+          skipTrial();
+        }
+      }, SQUARE_VISIBLE_MS);
+    }
+  }
+
+  function skipTrial() {
+    waitingForResponse = false;
+    setButtons(false);
+    clearCells();
+
+    document.getElementById('gentle-nudge').classList.add('show');
+    document.getElementById('encourage').textContent = '';
+
+    currentIdx++;
+    setTimeout(() => {
+      hideNudge();
+      showTrial();
+    }, INTER_TRIAL_GAP_MS);
+  }
+
+  function respond(isMatch) {
+    if (!gameActive || !waitingForResponse) return;
+
+    waitingForResponse = false;
+    clearTimeout(showTimeout);
+    setButtons(false);
+    hideNudge();
+
+    const actualMatch = sequence[currentIdx] === sequence[currentIdx - N];
+    const correct = (isMatch === actualMatch);
+    totalAnswered++;
+
+    highlightCell(sequence[currentIdx], correct ? 'correct' : 'wrong');
+
+    if (correct) {
+      score += N * 10 + (streak > 2 ? streak * 2 : 0);
+      streak++;
+      bestStreak = Math.max(bestStreak, streak);
+      correctAnswers++;
+      document.getElementById('feedback').textContent = isMatch ? 'Correct — it was a match! 🎉' : 'Correct — no match! 🎉';
+      document.getElementById('feedback').className = 'feedback good';
+      playCorrect();
+      if (streak % 5 === 0) {
+        changeN(1);
+        document.getElementById('encourage').textContent = '🌟 Level up! N increased — great work!';
+        playLevelUp();
+      } else if (streak > 1) {
+        document.getElementById('encourage').textContent = ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
+      } else {
+        document.getElementById('encourage').textContent = '';
+      }
+    } else {
+      streak = 0;
+      document.getElementById('feedback').textContent = isMatch ? 'Not quite — it was NOT a match.' : 'Not quite — it WAS a match.';
+      document.getElementById('feedback').className = 'feedback bad';
+      playWrong();
+      document.getElementById('encourage').textContent = "Keep trying — you're doing great!";
+
+      const errors = totalAnswered - correctAnswers;
+      if (errors > 0 && errors % 3 === 0 && N > 1) {
+        changeN(-1);
+        document.getElementById('encourage').textContent = 'Level adjusted — keep going! 💙';
+      }
+    }
+
+    updateScoreDisplay();
+    currentIdx++;
+    setTimeout(() => {
+      document.getElementById('feedback').textContent = '';
+      showTrial();
+    }, FEEDBACK_LINGER_MS);
+  }
+
+  function updateScoreDisplay() {
+    document.getElementById('score').textContent    = score;
+    document.getElementById('streak').textContent   = streak;
+    document.getElementById('accuracy').textContent = totalAnswered > 0
+      ? Math.round(correctAnswers / totalAnswered * 100) + '%' : '—';
+  }
+
+  function startGame() {
+    score = 0; streak = 0; bestStreak = 0;
+    totalAnswered = 0; correctAnswers = 0;
+    timeLeft = TOTAL_TIME; currentIdx = 0; gameActive = true;
+    waitingForResponse = false;
+    sequence = buildSequence(40);
+
+    document.getElementById('start-btn').classList.add('hidden');
+    document.getElementById('nup-btn').disabled   = true;
+    document.getElementById('ndown-btn').disabled = true;
+    document.getElementById('report-area').classList.add('hidden');
+    document.getElementById('score').textContent    = 0;
+    document.getElementById('streak').textContent   = 0;
+    document.getElementById('accuracy').textContent = '—';
+    document.getElementById('feedback').textContent  = '';
+    document.getElementById('encourage').textContent = '';
+    document.getElementById('timer-bar').style.background = '#185FA5';
+    hideNudge();
+
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      document.getElementById('timer').textContent = timeLeft;
+      document.getElementById('timer-bar').style.width = (timeLeft / TOTAL_TIME * 100) + '%';
+      if (timeLeft <= 15) document.getElementById('timer-bar').style.background = '#A32D2D';
+      if (timeLeft <= 0) endGame();
+    }, 1000);
+
+    showTrial();
+  }
+
+  function endGame() {
+    gameActive = false;
+    waitingForResponse = false;
+    clearInterval(timerInterval);
+    clearTimeout(showTimeout);
+    clearCells();
+    setButtons(false);
+    document.getElementById('match-btn').classList.add('hidden');
+    document.getElementById('nomatch-btn').classList.add('hidden');
+    document.getElementById('instruction').textContent = 'Session complete! Wonderful effort! 💙';
+    document.getElementById('start-btn').classList.remove('hidden');
+    document.getElementById('nup-btn').disabled   = false;
+    document.getElementById('ndown-btn').disabled = false;
+    hideNudge();
+
+    const acc = totalAnswered > 0 ? Math.round(correctAnswers / totalAnswered * 100) : 0;
+    document.getElementById('r-score').textContent    = score;
+    document.getElementById('r-level').textContent    = N + '-Back';
+    document.getElementById('r-acc').textContent      = acc + '%';
+    document.getElementById('r-streak').textContent   = bestStreak;
+    document.getElementById('r-hits').textContent     = correctAnswers;
+    document.getElementById('r-answered').textContent = totalAnswered;
+    document.getElementById('r-prog').style.width     = Math.min(100, acc) + '%';
+
+    let msg = '';
+    if (totalAnswered === 0)  msg = 'You watched the squares — that is a great first step! Try pressing Match or No Match next time. 💙';
+    else if (acc >= 80)       msg = 'Excellent! Your working memory is very sharp. Keep practising daily!';
+    else if (acc >= 60)       msg = 'Good work! Consistent practice will boost your recall further.';
+    else if (acc >= 40)       msg = 'Nice effort! N-Back improves with repetition — try again!';
+    else                      msg = 'Great start! Try a lower N level to build your foundation. You are doing wonderfully. 💙';
+    document.getElementById('r-message').textContent = msg;
+
+    document.getElementById('report-area').classList.remove('hidden');
+    playLevelUp();
+  }
+
+  function resetGame() {
+    document.getElementById('report-area').classList.add('hidden');
+    document.getElementById('timer').textContent = TOTAL_TIME;
+    document.getElementById('timer-bar').style.width = '100%';
+    document.getElementById('timer-bar').style.background = '#185FA5';
+    document.getElementById('seq-dots').innerHTML = '';
+    document.getElementById('feedback').textContent  = '';
+    document.getElementById('encourage').textContent = '';
+    document.getElementById('instruction').innerHTML =
+      'Press <strong>Start Game</strong> to begin. Watch where the blue square appears and remember it!';
+    hideNudge();
+  }
+</script>
+</body>
+</html>

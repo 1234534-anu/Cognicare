@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suitcase Memory Puzzle</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+  <style>
+    body {
+      box-sizing: border-box;
+    }
+    * {
+      font-family: 'DM Mono', monospace;
+    }
+    html, body {
+      height: 100%;
+      width: 100%;
+    }
+    #app-wrapper {
+      background: linear-gradient(135deg, #8b6f47 0%, #a0826d 50%, #8b6f47 100%);
+      background-attachment: fixed;
+      position: relative;
+      overflow: hidden;
+    }
+    .wood-texture {
+      background-image: 
+        repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px),
+        repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.05) 1px, rgba(255,255,255,0.05) 2px);
+    }
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 32px;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #3d2817;
+    }
+    .hud-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .hud-label {
+      font-size: 10px;
+      opacity: 0.7;
+    }
+    .hud-value {
+      font-size: 18px;
+      font-weight: 500;
+    }
+    .hud-timer {
+      font-size: 24px;
+      font-weight: 700;
+      color: #daa520;
+    }
+    .hud-timer.warning {
+      color: #ef4444;
+      animation: pulse-warn 0.5s infinite;
+    }
+    @keyframes pulse-warn {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    .pause-btn {
+      width: 36px;
+      height: 36px;
+      background: none;
+      border: 2px solid #3d2817;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .pause-btn:hover {
+      background: rgba(61, 40, 23, 0.1);
+      transform: scale(1.05);
+    }
+    .phase-indicator {
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #3d2817;
+      padding: 8px 0;
+      min-height: 30px;
+    }
+    .phase-text {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .suitcase-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex: 1;
+      padding: 20px;
+    }
+    .suitcase {
+      display: flex;
+      gap: 0;
+      background: #2d1f12;
+      border: 12px solid #2d1f12;
+      border-radius: 20px;
+      box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      max-width: 800px;
+      aspect-ratio: 2 / 1;
+    }
+    .suitcase-hinge-left {
+      position: absolute;
+      left: -8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 60px;
+      background: #1a1109;
+      border-radius: 8px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+    }
+    .suitcase-hinge-right {
+      position: absolute;
+      right: -8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 60px;
+      background: #1a1109;
+      border-radius: 8px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+    }
+    .compartment {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 4px;
+      padding: 16px;
+      position: relative;
+      transition: opacity 0.3s ease;
+    }
+    .compartment-left {
+      background: #daa520;
+      border-right: 2px solid #2d1f12;
+    }
+    .compartment-right {
+      background: #20b2aa;
+    }
+    .compartment.locked {
+      pointer-events: none;
+      opacity: 0.6;
+    }
+    .grid-cell {
+      background: rgba(255, 255, 255, 0.15);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 6px;
+      position: relative;
+      cursor: grab;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .grid-cell:hover:not(.locked) {
+      background: rgba(255, 255, 255, 0.25);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+    .grid-cell.active {
+      background: rgba(255, 255, 255, 0.4);
+      border-color: rgba(255, 255, 255, 0.7);
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+    }
+    .grid-cell.correct {
+      animation: correct-bounce 0.6s ease;
+      background: rgba(76, 175, 80, 0.3) !important;
+      border-color: rgba(76, 175, 80, 0.7) !important;
+    }
+    .grid-cell.target {
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px dashed rgba(255, 255, 255, 0.5);
+    }
+    .grid-cell.target::after {
+      content: '?';
+      font-size: 24px;
+      color: rgba(255, 255, 255, 0.4);
+      font-weight: bold;
+    }
+    @keyframes correct-bounce {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    .grid-item {
+      width: 70%;
+      height: 70%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      cursor: grab;
+      user-select: none;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+      transition: transform 0.3s ease;
+      z-index: 1;
+    }
+    .grid-item:active {
+      cursor: grabbing;
+      transform: scale(1.1);
+    }
+    .grid-item svg {
+      width: 100%;
+      height: 100%;
+    }
+    .collision {
+      animation: shake 0.4s ease;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      backdrop-filter: blur(4px);
+    }
+    .modal-content {
+      background: #f5f1e8;
+      padding: 32px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .modal-title {
+      font-size: 28px;
+      font-weight: 500;
+      color: #3d2817;
+      margin-bottom: 12px;
+    }
+    .modal-text {
+      font-size: 14px;
+      color: #5d4a37;
+      margin-bottom: 24px;
+      line-height: 1.6;
+      text-align: left;
+    }
+    .modal-text h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      color: #3d2817;
+    }
+    .modal-text ul {
+      list-style: none;
+      padding: 0;
+      margin: 8px 0;
+    }
+    .modal-text li {
+      padding: 6px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+    .modal-text li::before {
+      content: '▸';
+      position: absolute;
+      left: 0;
+    }
+    .modal-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-primary {
+      background: #daa520;
+      color: #3d2817;
+    }
+    .btn-primary:hover {
+      background: #c4941a;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(218, 165, 32, 0.3);
+    }
+    .btn-secondary {
+      background: #20b2aa;
+      color: white;
+    }
+    .btn-secondary:hover {
+      background: #1a9f99;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(32, 178, 170, 0.3);
+    }
+    .btn-small {
+      padding: 8px 16px;
+      font-size: 11px;
+    }
+    .hidden {
+      display: none !important;
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full">
+  <div id="app-wrapper" class="w-full h-full wood-texture flex flex-col"><!-- HUD -->
+   <div class="hud"><button class="pause-btn" id="pause-btn">⏸</button>
+    <div class="hud-item">
+     <div class="hud-label">
+      TIME
+     </div>
+     <div class="hud-value hud-timer" id="time-display">
+      60
+     </div>
+    </div>
+    <div class="hud-item">
+     <div class="hud-label">
+      SCORE
+     </div>
+     <div class="hud-value" id="score-display">
+      0
+     </div>
+    </div>
+    <div class="hud-item">
+     <div class="hud-label">
+      LEVEL
+     </div>
+     <div class="hud-value" id="level-display">
+      1/6
+     </div>
+    </div><button class="pause-btn" id="help-btn" style="margin-left: auto;">?</button>
+   </div><!-- Phase Indicator -->
+   <div class="phase-indicator">
+    <div class="phase-text" id="phase-text">
+     📖 MEMORIZE (10 seconds)
+    </div>
+   </div><!-- Suitcase -->
+   <div class="suitcase-container">
+    <div style="position: relative;">
+     <div class="suitcase-hinge-left"></div>
+     <div class="suitcase-hinge-right"></div>
+     <div class="suitcase"><!-- Left Compartment (Yellow) -->
+      <div class="compartment compartment-left" id="compartment-left"></div><!-- Right Compartment (Blue - Target) -->
+      <div class="compartment compartment-right" id="compartment-right"></div>
+     </div>
+    </div>
+   </div>
+  </div><!-- Help/How to Play Modal -->
+  <div id="help-modal" class="modal hidden">
+   <div class="modal-content">
+    <div class="modal-title">
+     HOW TO PLAY
+    </div>
+    <div class="modal-text">
+     <h3>📖 Memorize Phase</h3>
+     <ul>
+      <li>Watch the items in the yellow compartment for 10 seconds</li>
+      <li>Remember where each item is positioned</li>
+      <li>Items will be scrambled once time runs out</li>
+     </ul>
+     <h3>🎯 Play Phase</h3>
+     <ul>
+      <li>Items in the yellow compartment are now jumbled</li>
+      <li>The blue compartment shows target positions with "?" marks</li>
+      <li>Drag items from left to right to match their original positions</li>
+      <li>Green highlights show correct placements</li>
+      <li>Complete all placements before time runs out!</li>
+     </ul>
+     <h3>⭐ Levels</h3>
+     <ul>
+      <li>Level 1: 5 items, 60 seconds</li>
+      <li>Level 2: 6 items, 55 seconds</li>
+      <li>Level 3: 7 items, 50 seconds</li>
+      <li>Level 4: 8 items, 45 seconds</li>
+      <li>Level 5: 9 items, 40 seconds</li>
+      <li>Level 6: 9 items, 30 seconds (HARD)</li>
+     </ul>
+     <h3>🎮 Tips</h3>
+     <ul>
+      <li>Take mental notes during memorize phase</li>
+      <li>Group items by position to remember better</li>
+      <li>Bonus points for speed!</li>
+     </ul>
+    </div>
+    <div class="modal-buttons"><button class="btn btn-primary" id="close-help-btn">GOT IT</button>
+    </div>
+   </div>
+  </div><!-- Pause Modal -->
+  <div id="pause-modal" class="modal hidden">
+   <div class="modal-content">
+    <div class="modal-title">
+     PAUSED
+    </div>
+    <div class="modal-text">
+     Game paused. Click resume to continue.
+    </div>
+    <div class="modal-buttons"><button class="btn btn-primary" id="resume-btn">RESUME</button>
+    </div>
+   </div>
+  </div><!-- Level Complete Modal -->
+  <div id="level-complete-modal" class="modal hidden">
+   <div class="modal-content">
+    <div class="modal-title" id="level-complete-title">
+     ✓ LEVEL COMPLETE!
+    </div>
+    <div class="modal-text" id="level-complete-text">
+     Score: 0
+    </div>
+    <div class="modal-buttons"><button class="btn btn-primary" id="next-level-btn">NEXT LEVEL</button>
+    </div>
+   </div>
+  </div><!-- Game Over Modal -->
+  <div id="game-over-modal" class="modal hidden">
+   <div class="modal-content">
+    <div class="modal-title" id="game-over-title">
+     ��� TIME'S UP
+    </div>
+    <div class="modal-text" id="game-over-text">
+     Your score: 0
+    </div>
+    <div class="modal-buttons"><button class="btn btn-primary" id="restart-btn">RESTART GAME</button>
+    </div>
+   </div>
+  </div><!-- Final Victory Modal -->
+  <div id="victory-modal" class="modal hidden">
+   <div class="modal-content">
+    <div class="modal-title">
+     🏆 YOU WON!
+    </div>
+    <div class="modal-text" id="victory-text">
+     Final Score: 0
+    </div>
+    <div class="modal-buttons"><button class="btn btn-primary" id="play-again-btn">PLAY AGAIN</button>
+    </div>
+   </div>
+  </div>
+  <script>
+    // Level configurations
+    const LEVELS = [
+      { items: 5, time: 60, memorize: 10 },
+      { items: 6, time: 55, memorize: 10 },
+      { items: 7, time: 50, memorize: 10 },
+      { items: 8, time: 45, memorize: 10 },
+      { items: 9, time: 40, memorize: 10 },
+      { items: 9, time: 30, memorize: 8 }
+    ];
+
+    const GRID_COLS = 3;
+    const GRID_ROWS = 3;
+    const TOTAL_CELLS = GRID_COLS * GRID_ROWS;
+    const PHASES = {
+      MEMORIZE: 'memorize',
+      PLAY: 'play'
+    };
+
+    // Item types
+    const ITEMS = {
+      camera: {
+        name: 'Camera',
+        svg: `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="20" y="30" width="60" height="50" rx="4" fill="#2c2c2c" stroke="#1a1a1a" stroke-width="2"/>
+          <circle cx="50" cy="55" r="15" fill="#4a90e2" stroke="#2c2c2c" stroke-width="2"/>
+          <circle cx="50" cy="55" r="10" fill="#1a1a1a" opacity="0.5"/>
+          <circle cx="35" cy="40" r="4" fill="#999"/>
+          </svg>`
+      },
+      key: {
+        name: 'Key',
+        svg: `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="35" cy="50" r="12" fill="#ffd700" stroke="#b8860b" stroke-width="2"/>
+          <rect x="46" y="46" width="40" height="8" rx="2" fill="#ffd700" stroke="#b8860b" stroke-width="2"/>
+          <rect x="76" y="42" width="6" height="6" fill="#ffd700" stroke="#b8860b" stroke-width="1.5"/>
+          <rect x="76" y="52" width="6" height="6" fill="#ffd700" stroke="#b8860b" stroke-width="1.5"/>
+          </svg>`
+      },
+      passport: {
+        name: 'Passport',
+        svg: `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="25" y="20" width="50" height="60" rx="2" fill="#8b0000" stroke="#600000" stroke-width="2"/>
+          <circle cx="50" cy="35" r="8" fill="#daa520"/>
+          <rect x="30" y="48" width="40" height="3" fill="#daa520" opacity="0.6"/>
+          <rect x="30" y="54" width="40" height="2" fill="#daa520" opacity="0.6"/>
+          <rect x="30" y="58" width="40" height="2" fill="#daa520" opacity="0.6"/>
+          </svg>`
+      },
+      glasses: {
+        name: 'Glasses',
+        svg: `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="35" cy="45" r="12" fill="none" stroke="#333" stroke-width="3"/>
+          <circle cx="65" cy="45" r="12" fill="none" stroke="#333" stroke-width="3"/>
+          <line x1="47" y1="43" x2="53" y2="47" stroke="#333" stroke-width="2"/>
+          <circle cx="35" cy="45" r="7" fill="#e8f4f8" stroke="none"/>
+          <circle cx="65" cy="45" r="7" fill="#e8f4f8" stroke="none"/>
+          </svg>`
+      },
+      watch: {
+        name: 'Watch',
+        svg: `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="20" fill="#ff6b6b" stroke="#c92a2a" stroke-width="2"/>
+          <circle cx="50" cy="50" r="14" fill="none" stroke="#c92a2a" stroke-width="1"/>
+          <line x1="50" y1="50" x2="50" y2="38" stroke="#c92a2a" stroke-width="2"/>
+          <line x1="50" y1="50" x2="58" y2="50" stroke="#c92a2a" stroke-width="1.5"/>
+          </svg>`
+      },
+      map: {
+        name: 'Map',
+        svg: `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="20" y="25" width="60" height="50" fill="#90ee90" stroke="#228b22" stroke-width="2" rx="2"/>
+          <circle cx="35" cy="40" r="3" fill="#ff6b6b"/>
+          <circle cx="65" cy="55" r="3" fill="#ff6b6b"/>
+          <path d="M 35 40 L 65 55" stroke="#4a4a4a" stroke-width="1.5" stroke-dasharray="2,2"/>
+          </svg>`
+      },
+      book: {
+        name: 'Book',
+        svg: `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="25" y="30" width="50" height="40" fill="#4a90e2" stroke="#2c5aa0" stroke-width="2"/>
+          <line x1="50" y1="30" x2="50" y2="70" stroke="#2c5aa0" stroke-width="1.5"/>
+          <line x1="30" y1="40" x2="45" y2="40" stroke="#fff" stroke-width="1"/>
+          <line x1="30" y1="48" x2="45" y2="48" stroke="#fff" stroke-width="1"/>
+          <line x1="30" y1="56" x2="45" y2="56" stroke="#fff" stroke-width="1"/>
+          </svg>`
+      },
+      phone: {
+        name: 'Phone',
+        svg: `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="30" y="20" width="40" height="60" fill="#333" stroke="#000" stroke-width="2" rx="4"/>
+          <rect x="35" y="25" width="30" height="45" fill="#87ceeb"/>
+          <circle cx="50" cy="75" r="3" fill="#666"/>
+          </svg>`
+      },
+      headphones: {
+        name: 'Headphones',
+        svg: `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 30 60 Q 30 35 50 35 Q 70 35 70 60" fill="none" stroke="#333" stroke-width="3"/>
+          <circle cx="30" cy="65" r="8" fill="#666" stroke="#333" stroke-width="2"/>
+          <circle cx="70" cy="65" r="8" fill="#666" stroke="#333" stroke-width="2"/>
+          </svg>`
+      }
+    };
+
+    // Game State
+    let currentLevel = 1;
+    let gameTime = 60;
+    let score = 0;
+    let isPaused = false;
+    let timerInterval = null;
+    let gamePhase = PHASES.MEMORIZE;
+    let memorizeTime = 10;
+    let memorizeCounter = 0;
+    let leftItems = [];
+    let rightItems = [];
+    let originalLeftItems = [];
+    let draggedItem = null;
+    let draggedSource = null;
+    let correctPlacements = 0;
+    let levelItemCount = 5;
+
+    const defaultConfig = {
+      game_title: 'Suitcase Memory Puzzle',
+      time_limit: '60',
+      show_time: '10'
+    };
+
+    // Initialize game
+    function initGame() {
+      currentLevel = 1;
+      score = 0;
+      startLevel(1);
+    }
+
+    // Start a specific level
+    function startLevel(levelNum) {
+      currentLevel = levelNum;
+      const levelConfig = LEVELS[levelNum - 1];
+      
+      gameTime = levelConfig.time;
+      memorizeTime = levelConfig.memorize;
+      levelItemCount = levelConfig.items;
+      isPaused = false;
+      gamePhase = PHASES.MEMORIZE;
+      memorizeCounter = 0;
+      leftItems = [];
+      rightItems = [];
+      correctPlacements = 0;
+
+      document.getElementById('level-display').textContent = `${levelNum}/6`;
+
+      // Generate unique random items (no duplicates)
+      const itemKeys = Object.keys(ITEMS);
+      const selectedItems = [];
+      const itemsCopy = [...itemKeys];
+      
+      for (let i = 0; i < levelItemCount; i++) {
+        // If we run out of items, refill the pool
+        if (itemsCopy.length === 0) {
+          itemsCopy.push(...Object.keys(ITEMS));
+        }
+        const randomIdx = Math.floor(Math.random() * itemsCopy.length);
+        const type = itemsCopy.splice(randomIdx, 1)[0];
+        
+        leftItems.push({
+          id: `item-${i}`,
+          type,
+          position: i,
+          correctPosition: i
+        });
+      }
+
+      originalLeftItems = JSON.parse(JSON.stringify(leftItems));
+      renderGame();
+      lockCompartments();
+      startMemorizePhase();
+    }
+
+    // Memorize phase
+    function startMemorizePhase() {
+      document.getElementById('phase-text').textContent = `📖 MEMORIZE (${memorizeTime}s remaining)`;
+      
+      memorizeCounter = 0;
+      const memorizeInterval = setInterval(() => {
+        memorizeCounter++;
+        const timeLeft = memorizeTime - memorizeCounter;
+        document.getElementById('phase-text').textContent = `📖 MEMORIZE (${Math.max(0, timeLeft)}s remaining)`;
+
+        if (memorizeCounter >= memorizeTime) {
+          clearInterval(memorizeInterval);
+          startPlayPhase();
+        }
+      }, 1000);
+    }
+
+    // Play phase - jumble items
+    function startPlayPhase() {
+      gamePhase = PHASES.PLAY;
+      
+      // Shuffle left items
+      const shuffled = [...leftItems].sort(() => Math.random() - 0.5);
+      leftItems = shuffled.map((item, idx) => ({
+        ...item,
+        position: idx
+      }));
+
+      document.getElementById('phase-text').textContent = '🎯 PLACE ITEMS NOW!';
+      unlockCompartments();
+      renderGame();
+      startTimer();
+    }
+
+    // Render game state
+    function renderGame() {
+      renderCompartment('compartment-left', leftItems, true);
+      renderCompartment('compartment-right', rightItems, false);
+      document.getElementById('score-display').textContent = score;
+    }
+
+    // Render a compartment
+    function renderCompartment(compartmentId, items, isLeft) {
+      const compartment = document.getElementById(compartmentId);
+      compartment.innerHTML = '';
+
+      for (let i = 0; i < TOTAL_CELLS; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'grid-cell';
+        cell.dataset.index = i;
+        cell.addEventListener('click', (e) => handleCellClick(e, compartmentId, items, isLeft));
+        cell.addEventListener('dragover', (e) => e.preventDefault());
+        cell.addEventListener('drop', (e) => handleDrop(e, compartmentId, items, isLeft));
+
+        const item = items.find(it => it.position === i);
+        if (item) {
+          const itemEl = document.createElement('div');
+          itemEl.className = 'grid-item';
+          itemEl.dataset.itemId = item.id;
+          itemEl.draggable = gamePhase === PHASES.PLAY;
+          itemEl.innerHTML = ITEMS[item.type].svg;
+          itemEl.addEventListener('dragstart', (e) => {
+            if (gamePhase === PHASES.PLAY) {
+              draggedItem = item;
+              draggedSource = compartmentId;
+              e.dataTransfer.effectAllowed = 'move';
+            }
+          });
+          cell.appendChild(itemEl);
+          cell.classList.add('active');
+
+          // Highlight correct placements in play phase
+          if (gamePhase === PHASES.PLAY && !isLeft && item.correctPosition === item.position) {
+            cell.classList.add('correct');
+          }
+        } else if (gamePhase === PHASES.PLAY && !isLeft && i < levelItemCount) {
+          // Show target positions in right compartment
+          cell.classList.add('target');
+        }
+
+        compartment.appendChild(cell);
+      }
+    }
+
+    // Handle cell click for mobile
+    function handleCellClick(e, compartmentId, items, isLeft) {
+      if (gamePhase !== PHASES.PLAY) return;
+      const cell = e.currentTarget;
+      const index = parseInt(cell.dataset.index);
+
+      if (draggedItem && draggedSource) {
+        placeItem(draggedItem, draggedSource, compartmentId, index, !isLeft);
+        draggedItem = null;
+        draggedSource = null;
+      }
+    }
+
+    // Handle drop
+    function handleDrop(e, targetCompartmentId, targetItems, isLeft) {
+      e.preventDefault();
+      if (!draggedItem || gamePhase !== PHASES.PLAY) return;
+
+      const cell = e.currentTarget;
+      const targetIndex = parseInt(cell.dataset.index);
+      placeItem(draggedItem, draggedSource, targetCompartmentId, targetIndex, !isLeft);
+      draggedItem = null;
+      draggedSource = null;
+    }
+
+    // Place item in target cell
+    function placeItem(item, sourceId, targetId, targetIndex, targetIsLeft) {
+      console.log('placeItem called:', { item: item.id, sourceId, targetId, targetIndex, sourceList: sourceId === 'compartment-left' ? leftItems.length : rightItems.length });
+
+      // Only allow placement in right compartment during play phase
+      if (targetId !== 'compartment-right') {
+        document.getElementById('compartment-left').classList.add('collision');
+        setTimeout(() => document.getElementById('compartment-left').classList.remove('collision'), 400);
+        return;
+      }
+
+      const targetItems = rightItems;
+
+      // Check if target position is already occupied by a different item
+      const existingItem = targetItems.find(it => it.position === targetIndex);
+      if (existingItem && existingItem.id !== item.id) {
+        document.getElementById('compartment-right').classList.add('collision');
+        setTimeout(() => document.getElementById('compartment-right').classList.remove('collision'), 400);
+        return;
+      }
+
+      // If item is already in target compartment, just reposition it
+      if (sourceId === 'compartment-right') {
+        console.log('Repositioning item within right compartment');
+        item.position = targetIndex;
+        renderGame();
+        checkWinCondition();
+        return;
+      }
+
+      // Item is coming from left compartment
+      console.log('Moving item from left. Before removal - left items:', leftItems.length);
+      
+      // Remove from left compartment by index
+      const itemIndex = leftItems.findIndex(it => it.id === item.id);
+      console.log('Found item at index:', itemIndex);
+      if (itemIndex !== -1) {
+        leftItems.splice(itemIndex, 1);
+      }
+      
+      console.log('After removal - left items:', leftItems.length);
+
+      // Set new position
+      item.position = targetIndex;
+      
+      // Add to right compartment
+      rightItems.push(item);
+      console.log('Added to right. Right items now:', rightItems.length, 'Left items now:', leftItems.length);
+
+      // Score based on correctness
+      if (item.correctPosition === targetIndex) {
+        score += 15;
+        correctPlacements++;
+      } else {
+        score += 5;
+      }
+
+      renderGame();
+      checkWinCondition();
+    }
+
+    // Check win condition
+    function checkWinCondition() {
+      console.log('Checking win condition. Left items:', leftItems.length, 'Right items:', rightItems.length, 'Level item count:', levelItemCount);
+      console.log('Right items positions:', rightItems.map(i => ({ id: i.id, pos: i.position, correct: i.correctPosition })));
+      
+      // Win only when:
+      // 1. All items are removed from left (left is empty)
+      // 2. All items are in right compartment
+      // 3. All items are in their CORRECT original positions
+      
+      if (leftItems.length === 0 && rightItems.length === levelItemCount) {
+        const allCorrect = rightItems.every(item => item.position === item.correctPosition);
+        console.log('All items placed. Checking if all correct:', allCorrect);
+        if (allCorrect) {
+          console.log('WIN!');
+          completeLevel();
+        }
+      }
+    }
+
+    // Complete level
+    function completeLevel() {
+      pauseGame();
+      score += gameTime * 2;
+
+      if (currentLevel === 6) {
+        showVictory();
+      } else {
+        const modal = document.getElementById('level-complete-modal');
+        document.getElementById('level-complete-title').textContent = `✓ LEVEL ${currentLevel} COMPLETE!`;
+        document.getElementById('level-complete-text').textContent = `Score: ${score}`;
+        modal.classList.remove('hidden');
+
+        document.getElementById('next-level-btn').onclick = () => {
+          modal.classList.add('hidden');
+          startLevel(currentLevel + 1);
+        };
+      }
+    }
+
+    // Show final victory
+    function showVictory() {
+      const modal = document.getElementById('victory-modal');
+      document.getElementById('victory-text').textContent = `Final Score: ${score}\n\nYou completed all 6 levels!`;
+      modal.classList.remove('hidden');
+
+      document.getElementById('play-again-btn').onclick = () => {
+        modal.classList.add('hidden');
+        initGame();
+      };
+    }
+
+    // Timer
+    function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+
+      timerInterval = setInterval(() => {
+        if (!isPaused && gamePhase === PHASES.PLAY) {
+          gameTime--;
+          const timerEl = document.getElementById('time-display');
+          timerEl.textContent = gameTime;
+          timerEl.classList.toggle('warning', gameTime <= 10);
+
+          if (gameTime <= 0) {
+            endGame();
+          }
+        }
+      }, 1000);
+    }
+
+    // End game
+    function endGame() {
+      pauseGame();
+      const modal = document.getElementById('game-over-modal');
+      document.getElementById('game-over-title').textContent = '⏰ TIME\'S UP';
+      document.getElementById('game-over-text').textContent = `Final Score: ${score}\n\nYou reached Level ${currentLevel}`;
+      modal.classList.remove('hidden');
+
+      document.getElementById('restart-btn').onclick = () => {
+        modal.classList.add('hidden');
+        initGame();
+      };
+    }
+
+    // Pause/Resume
+    function pauseGame() {
+      isPaused = true;
+      if (timerInterval) clearInterval(timerInterval);
+    }
+
+    function resumeGame() {
+      isPaused = false;
+      document.getElementById('pause-modal').classList.add('hidden');
+      if (gamePhase === PHASES.PLAY) startTimer();
+    }
+
+    function lockCompartments() {
+      document.getElementById('compartment-left').classList.add('locked');
+      document.getElementById('compartment-right').classList.add('locked');
+    }
+
+    function unlockCompartments() {
+      document.getElementById('compartment-left').classList.remove('locked');
+      document.getElementById('compartment-right').classList.remove('locked');
+    }
+
+    // Event Listeners
+    document.getElementById('pause-btn').addEventListener('click', () => {
+      pauseGame();
+      document.getElementById('pause-modal').classList.remove('hidden');
+    });
+
+    document.getElementById('resume-btn').addEventListener('click', resumeGame);
+
+    document.getElementById('help-btn').addEventListener('click', () => {
+      document.getElementById('help-modal').classList.remove('hidden');
+    });
+
+    document.getElementById('close-help-btn').addEventListener('click', () => {
+      document.getElementById('help-modal').classList.add('hidden');
+    });
+
+    // SDK Integration
+    async function onConfigChange(config) {
+      document.title = config.game_title || defaultConfig.game_title;
+    }
+
+    function mapToCapabilities(config) {
+      return {
+        recolorables: [],
+        borderables: [],
+        fontEditable: undefined,
+        fontSizeable: undefined
+      };
+    }
+
+    function mapToEditPanelValues(config) {
+      return new Map([
+        ['game_title', config.game_title || defaultConfig.game_title]
+      ]);
+    }
+
+    // Initialize SDK
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities,
+        mapToEditPanelValues
+      });
+    }
+
+    // Start game 
+    initGame();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ca35f06c4583b2d',t:'MTc3MDQ3MjM4Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

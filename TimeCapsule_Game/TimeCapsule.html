@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Time Capsule</title>
+<link rel="stylesheet" href="TimeCapsule.css">
+</head>
+
+<body>
+
+<!-- TOP BAR -->
+<div class="topBar">
+    <button class="quitBtn" onclick="quitGame()">✖ Quit Game</button>
+    <h2>TIME CAPSULE</h2>
+    <button class="helpBtn" onclick="openHelp()">❓ How to Play</button>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="layout">
+
+    <!-- MERGED GAME CARD -->
+    <div class="card gameMergeCard">
+
+        <h3>Puzzle Game</h3>
+
+        <div class="gameArea">
+
+            <!-- PIECES -->
+            <div class="piecesArea">
+                <h4>Puzzle Pieces</h4>
+                <canvas id="piecesCanvas" width="260" height="360"></canvas>
+            </div>
+
+            <!-- BOARD -->
+            <div class="boardArea">
+                <h4>Jigsaw Board</h4>
+                <canvas id="boardCanvas" width="360" height="360"></canvas>
+            </div>
+
+        </div>
+
+        <button id="startBtn">▶ Start Puzzle</button>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="card controlCard">
+
+        <h3>Controls</h3>
+
+        <p class="sectionTitle">Default Images</p>
+
+        <div class="imageGrid">
+            <img src="img1.jpg" onclick="loadDefault(1)">
+            <img src="img2.jpg" onclick="loadDefault(2)">
+            <img src="img3.jpg" onclick="loadDefault(3)">
+            <img src="img4.jpg" onclick="loadDefault(4)">
+        </div>
+
+        <hr>
+
+        <p class="sectionTitle">Upload Image</p>
+        <input type="file" id="upload" accept="image/*">
+
+        <div class="controlButtons">
+    		<button onclick="setPieces(4)">4 Pieces</button>
+    		<button onclick="setPieces(6)">6 Pieces</button>
+    		<button onclick="setPieces(9)">9 Pieces</button>
+    		<button id="ghostBtn" onclick="toggleGhost()">Ghost Overlay</button>
+	</div>
+
+
+    </div>
+</div>
+
+<!-- HOW TO PLAY MODAL -->
+<div class="modal" id="helpModal">
+    <div class="modalContent">
+        <h3>How to Play</h3>
+        <p>
+            1. Select a default image or upload your own.<br><br>
+            2. Choose number of pieces.<br><br>
+            3. Click <b>Start Puzzle</b>.<br><br>
+            4. Drag pieces from left and place them correctly on the board.<br><br>
+            5. Use <b>Ghost Overlay</b> for guidance.
+        </p>
+        <button onclick="closeHelp()">Close</button>
+    </div>
+</div>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="/authGuard.js"></script>
+
+<script>
+  let currentUser;
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    currentUser = await requireAuth();
+    if (!currentUser) return;
+
+    console.log("Logged in user:", currentUser.id);
+  });
+</script>
+
+<script src="TimeCapsule.js"></script>
+
+<!-- COMPLETION MODAL -->
+<div class="modal" id="completeModal">
+    <div class="modalContent">
+        <h2 id="complimentText">Well done! 🎉</h2>
+        <p>You completed the puzzle successfully.</p>
+        <button onclick="restartPuzzle()">Play Again</button>
+    </div>
+</div>
+
+</body>
+</html>

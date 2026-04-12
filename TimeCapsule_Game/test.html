@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CogniCare | Caretaker Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Supabase -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap');
+
+    :root {
+      --bg: #0d0f1a;
+      --surface: #13172a;
+      --card: #181d33;
+      --border: #252b4a;
+      --accent: #7c6af7;
+      --accent2: #4fd1c5;
+      --warn: #f6ad55;
+      --danger: #fc8181;
+      --safe: #68d391;
+      --text: #e8eaf6;
+      --muted: #8892b0;
+      --pulse: rgba(124,106,247,0.15);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── AUTH OVERLAY ─── */
+    #authOverlay {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .auth-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 40px;
+      width: 380px;
+      text-align: center;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.5);
+    }
+    .auth-card .logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 26px; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .auth-card p { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+    .btn-google {
+      background: white; color: #1a1a2e;
+      border: none; border-radius: 12px;
+      padding: 14px 20px; width: 100%;
+      font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-google:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,255,255,0.15); }
+    #authError { color: var(--danger); font-size: 13px; margin-top: 16px; display: none; }
+
+    /* ─── APP SHELL ─── */
+    #app { display: none; }
+
+    /* ─── SIDEBAR ─── */
+    .sidebar {
+      position: fixed; left: 0; top: 0; bottom: 0;
+      width: 240px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding: 28px 16px;
+      z-index: 100;
+    }
+    .sidebar-logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      padding: 0 8px 28px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .sidebar-logo span { display: block; font-size: 11px; color: var(--muted); font-weight: 400; font-family: 'DM Sans', sans-serif; -webkit-text-fill-color: var(--muted); }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 12px; border-radius: 10px;
+      color: var(--muted); font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: all 0.2s;
+      text-decoration: none; margin-bottom: 4px;
+    }
+    .nav-item:hover { background: var(--pulse); color: var(--text); }
+    .nav-item.active { background: var(--accent); color: white; }
+    .nav-item .icon { font-size: 18px; width: 20px; text-align: center; }
+    .sidebar-footer { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border); }
+    .user-chip {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 10px;
+      background: var(--card);
+    }
+    .avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 13px; color: white; flex-shrink: 0;
+    }
+    .user-info { flex: 1; min-width: 0; }
+    .user-info .name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-info .role { font-size: 11px; color: var(--accent2); }
+    .btn-logout { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px; }
+    .btn-logout:hover { color: var(--danger); }
+
+    /* ─── MAIN CONTENT ─── */
+    .main { margin-left: 240px; padding: 28px 32px; min-height: 100vh; }
+
+    /* ─── TOP BAR ─── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .topbar h1 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; }
+    .topbar .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .badge-live {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(104,211,145,0.1); border: 1px solid rgba(104,211,145,0.3);
+      color: var(--safe); padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    }
+    .badge-live .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--safe); animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+    /* ─── SECTIONS ─── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ─── STAT CARDS ─── */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 16px; margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px;
+      position: relative; overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .stat-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+    .stat-label { font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 700; }
+    .stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .stat-icon { position: absolute; right: 16px; top: 16px; font-size: 28px; opacity: 0.15; }
+    .safe-val { color: var(--safe); }
+    .warn-val { color: var(--warn); }
+    .danger-val { color: var(--danger); }
+    .accent-val { color: var(--accent); }
+
+    /* ─── GRID LAYOUTS ─── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+    /* ─── CARD ─── */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px;
+    }
+    .card-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px; font-weight: 600; margin-bottom: 20px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-title .badge {
+      background: var(--accent); color: white;
+      font-size: 11px; padding: 2px 8px; border-radius: 999px;
+      font-family: 'DM Sans', sans-serif; font-weight: 600;
+    }
+
+    /* ─── ALERT ITEMS ─── */
+    .alert-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid var(--border);
+    }
+    .alert-item:last-child { border-bottom: none; }
+    .alert-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      flex-shrink: 0; margin-top: 5px;
+    }
+    .alert-dot.high { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+    .alert-dot.medium { background: var(--warn); }
+    .alert-dot.low { background: var(--safe); }
+    .alert-text { font-size: 13px; line-height: 1.5; }
+    .alert-time { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ─── VITALS BAR ─── */
+    .vital-row { margin-bottom: 16px; }
+    .vital-header { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+    .vital-bar-bg { background: var(--border); border-radius: 999px; height: 8px; overflow: hidden; }
+    .vital-bar-fill { height: 100%; border-radius: 999px; transition: width 1s ease; }
+
+    /* ─── PATIENT LIST ─── */
+    .patient-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .patient-item:last-child { border-bottom: none; }
+    .patient-item:hover { padding-left: 8px; }
+    .patient-avatar {
+      width: 42px; height: 42px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 16px; flex-shrink: 0;
+    }
+    .patient-info { flex: 1; }
+    .patient-name { font-size: 14px; font-weight: 600; }
+    .patient-meta { font-size: 12px; color: var(--muted); }
+    .status-pill {
+      padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    }
+    .status-pill.good { background: rgba(104,211,145,0.15); color: var(--safe); }
+    .status-pill.warn { background: rgba(246,173,85,0.15); color: var(--warn); }
+    .status-pill.alert { background: rgba(252,129,129,0.15); color: var(--danger); }
+
+    /* ─── SESSION TABLE ─── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead { background: var(--border); }
+    th { padding: 10px 14px; text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* ─── SCORE BADGE ─── */
+    .score { font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+    .score.high { color: var(--safe); }
+    .score.mid { color: var(--warn); }
+    .score.low { color: var(--danger); }
+
+    /* ─── ASSIGN PANEL ─── */
+    .assign-form { display: flex; gap: 10px; }
+    .input-field {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px;
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+      outline: none; transition: border-color 0.2s;
+    }
+    .input-field:focus { border-color: var(--accent); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #6a5af5);
+      color: white; border: none; border-radius: 10px;
+      padding: 10px 20px; font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: transform 0.2s, opacity 0.2s; white-space: nowrap;
+    }
+    .btn-primary:hover { transform: translateY(-1px); opacity: 0.92; }
+
+    /* ─── CHART CONTAINER ─── */
+    .chart-wrap { position: relative; height: 200px; }
+
+    /* ─── RISK METER ─── */
+    .risk-meter { text-align: center; padding: 10px 0; }
+    .risk-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .risk-value {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 48px; font-weight: 700;
+    }
+    .risk-caption { font-size: 12px; margin-top: 4px; }
+
+    /* ─── GPS / LOCATION ─── */
+    .location-bar {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .location-name { font-size: 14px; font-weight: 600; }
+    .location-time { font-size: 12px; color: var(--muted); }
+
+    /* ─── LOADING ─── */
+    #loadingSpinner {
+      display: flex; align-items: center; justify-content: center;
+      height: 200px; color: var(--muted); flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── REFRESH TICKER ─── */
+    .refresh-ticker { font-size: 11px; color: var(--muted); }
+
+    /* ─── EMPTY STATE ─── */
+    .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+
+    /* ─── TOAST ─── */
+    #toast {
+      position: fixed; bottom: 28px; right: 28px;
+      background: var(--card); border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      padding: 14px 20px; border-radius: 12px;
+      font-size: 13px; font-weight: 500;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      transform: translateY(80px); opacity: 0;
+      transition: all 0.3s; z-index: 9999; max-width: 300px;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 1100px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .grid-3 { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+
+
+<!-- ═══════════════════ APP ═══════════════════ -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      🧠 CogniCare
+      <span>Caretaker Portal</span>
+    </div>
+
+    <a class="nav-item active" onclick="switchSection('overview')" href="#">
+      <span class="icon">📊</span> Overview
+    </a>
+    <a class="nav-item" onclick="switchSection('patients')" href="#">
+      <span class="icon">👥</span> Patients
+    </a>
+    <a class="nav-item" onclick="switchSection('alerts')" href="#">
+      <span class="icon">🔔</span> Alerts
+      <span id="alertBadge" style="margin-left:auto;background:var(--danger);color:white;font-size:10px;padding:2px 7px;border-radius:999px;display:none"></span>
+    </a>
+    <a class="nav-item" onclick="switchSection('sessions')" href="#">
+      <span class="icon">🎮</span> Game Sessions
+    </a>
+    <a class="nav-item" onclick="switchSection('vitals')" href="#">
+      <span class="icon">❤️</span> Vitals Monitor
+    </a>
+    <a class="nav-item" onclick="switchSection('location')" href="#">
+      <span class="icon">📍</span> GPS Tracking
+    </a>
+    <a class="nav-item" onclick="switchSection('assign')" href="#">
+      <span class="icon">➕</span> Assign Patient
+    </a>
+
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="avatar" id="userAvatar">?</div>
+        <div class="user-info">
+          <div class="name" id="userName">Loading…</div>
+          <div class="role">Caretaker</div>
+        </div>
+        <button class="btn-logout" title="Logout">⎋</button>
+      </div>
+      <div class="refresh-ticker" style="text-align:center;margin-top:10px" id="refreshTicker">
+        Next refresh in <span id="countdown">30</span>s
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <div>
+        <h1 id="sectionTitle">Overview</h1>
+        <div class="sub" id="sectionSub">Real-time patient monitoring dashboard</div>
+      </div>
+      <div class="badge-live">
+        <div class="dot"></div> Live Monitoring
+      </div>
+    </div>
+
+    <!-- ═══ OVERVIEW ═══ -->
+    <div id="section-overview" class="section active">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Assigned Patients</div>
+          <div class="stat-value accent-val" id="stat-patients">—</div>
+          <div class="stat-sub">Under your care</div>
+          <div class="stat-icon">👥</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Alerts Today</div>
+          <div class="stat-value danger-val" id="stat-alerts">—</div>
+          <div class="stat-sub">Requiring attention</div>
+          <div class="stat-icon">🔔</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg. Cognitive Score</div>
+          <div class="stat-value safe-val" id="stat-score">—</div>
+          <div class="stat-sub">Out of 100</div>
+          <div class="stat-icon">🧠</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Sessions Today</div>
+          <div class="stat-value warn-val" id="stat-sessions">—</div>
+          <div class="stat-sub">Games completed</div>
+          <div class="stat-icon">🎮</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">📈 Cognitive Score Trend</div>
+          <div class="chart-wrap">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">🔔 Recent Alerts <span class="badge" id="alertCount">0</span></div>
+          <div id="alertList"><div class="empty">No alerts yet</div></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">👥 Patient Quick View</div>
+          <div id="patientQuickList"><div class="empty">No patients assigned</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">🎮 Latest Game Sessions</div>
+          <div id="recentSessions"><div class="empty">No sessions recorded</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ PATIENTS ═══ -->
+    <div id="section-patients" class="section">
+      <div class="card">
+        <div class="card-title">👥 All Assigned Patients</div>
+        <div id="patientFullList"><div class="empty">No patients assigned yet</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ ALERTS ═══ -->
+    <div id="section-alerts" class="section">
+      <div class="card">
+        <div class="card-title">🔔 All Alerts & Risk Flags</div>
+        <div id="alertFullList"><div class="empty">No alerts recorded</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ SESSIONS ═══ -->
+    <div id="section-sessions" class="section">
+      <div class="card">
+        <div class="card-title">🎮 Game Session History</div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Game</th>
+                <th>Date</th>
+                <th>Duration</th>
+                <th>Score</th>
+                <th>Difficulty</th>
+                <th>Accuracy</th>
+              </tr>
+            </thead>
+            <tbody id="sessionsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ VITALS ═══ -->
+    <div id="section-vitals" class="section">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Avg Heart Rate</div>
+          <div class="stat-value safe-val" id="avgHR">—</div>
+          <div class="stat-sub">BPM average</div>
+          <div class="stat-icon">❤️</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg SpO₂</div>
+          <div class="stat-value accent-val" id="avgSpO2">—</div>
+          <div class="stat-sub">% oxygen saturation</div>
+          <div class="stat-icon">💨</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Stress Index</div>
+          <div class="stat-value warn-val" id="avgStress">—</div>
+          <div class="stat-sub">GSR based</div>
+          <div class="stat-icon">⚡</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg Temperature</div>
+          <div class="stat-value" id="avgTemp">—</div>
+          <div class="stat-sub">Body temp °C</div>
+          <div class="stat-icon">🌡️</div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">❤️ Heart Rate Trend</div>
+          <div class="chart-wrap"><canvas id="hrChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">💨 SpO₂ Levels</div>
+          <div class="chart-wrap"><canvas id="spo2Chart"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 Live Vitals — All Patients</div>
+        <div id="vitalsTable"></div>
+      </div>
+    </div>
+
+    <!-- ═══ LOCATION ═══ -->
+    <div id="section-location" class="section">
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">📍 GPS Location History</div>
+        <div id="locationList"><div class="empty">No GPS data available</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">⚠️ Wandering Alerts</div>
+        <div id="wanderingAlerts"><div class="empty">No wandering alerts — all patients in safe zones</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ ASSIGN ═══ -->
+    <div id="section-assign" class="section">
+      <div class="card" style="max-width: 500px">
+        <div class="card-title">➕ Assign New Patient</div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:20px">
+          Enter the patient's User ID from their CogniCare account to add them under your care.
+        </p>
+        <div class="assign-form">
+          <input class="input-field" id="assignInput" placeholder="Patient User ID (UUID)" />
+          <button class="btn-primary" onclick="assignPatient()">Assign</button>
+        </div>
+        <div id="assignMsg" style="font-size:13px;margin-top:12px"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ═══════════════════════════ SCRIPTS ═══════════════════════════ -->
+<script>
+
+/* ─── SUPABASE CONFIG ─── */
+const SUPABASE_URL = "https://bmybtwrgosqxfvwkytui.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJteWJ0d3Jnb3NxeGZ2d2t5dHVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MDgzNjYsImV4cCI6MjA5MTI4NDM2Nn0.T9gQN6E950yklyLpSxkpCFkNjavi8jaNn4YscHY712w";
+
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+/* ─── GLOBALS ─── */
+let currentUser = null;
+let patients = [];
+let sessions = [];
+let vitals = [];
+let alerts = [];
+let locations = [];
+
+/* ─── LOAD ALL ─── */
+async function loadAll() {
+  await Promise.all([
+    loadPatients(),
+    loadSessions(),
+    loadVitals(),
+    loadAlerts(),
+    loadLocation()
+  ]);
+}
+
+/* ───────────── PATIENTS (FIXED) ───────────── */
+async function loadPatients() {
+  const { data, error } = await db
+    .from('time_capsule_doctor_view')
+    .select('user_id, patient_name, patient_age, patient_gender');
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  const seen = new Set();
+  patients = (data || [])
+    .filter(p => {
+      if (seen.has(p.user_id)) return false;
+      seen.add(p.user_id);
+      return true;
+    })
+    .map(p => ({
+      patient: {
+        id: p.user_id,
+        name: p.patient_name || "Patient",
+        age: p.patient_age || "--",
+        gender: p.patient_gender || "--"
+      }
+    }));
+
+  renderPatients();
+}
+
+function renderPatients() {
+  const el = document.getElementById("patientQuickList");
+  if (!el) return;
+
+  if (!patients.length) {
+    el.innerHTML = "<div>No patients</div>";
+    return;
+  }
+
+  el.innerHTML = patients.map(p => `
+    <div style="padding:10px;border-bottom:1px solid #333">
+      <strong>${p.patient.name}</strong><br>
+      ${p.patient.age} yrs · ${p.patient.gender}
+    </div>
+  `).join('');
+
+  document.getElementById("stat-patients").textContent = patients.length;
+}
+
+/* ───────────── SESSIONS ───────────── */
+async function loadSessions() {
+  const { data } = await db
+    .from('time_capsule_doctor_view')
+    .select('*')
+    .limit(50);
+
+  sessions = data || [];
+}
+
+/* ───────────── VITALS ───────────── */
+async function loadVitals() {
+  const { data } = await db
+    .from('vitals')
+    .select('*')
+    .limit(50);
+
+  vitals = data || [];
+}
+
+/* ───────────── ALERTS ───────────── */
+async function loadAlerts() {
+  const { data } = await db
+    .from('risk_alerts')
+    .select('*')
+    .limit(50);
+
+  alerts = data || [];
+}
+
+/* ───────────── LOCATION ───────────── */
+async function loadLocation() {
+  const { data } = await db
+    .from('gps_logs')
+    .select('*')
+    .limit(50);
+
+  locations = data || [];
+}
+
+/* ───────────── INIT ───────────── */
+window.addEventListener('load', async () => {
+
+  // ✅ NO LOGIN
+  currentUser = { id: "demo-user" };
+
+  // ✅ SHOW APP DIRECTLY
+  document.getElementById("authOverlay")?.remove();
+  document.getElementById("app").style.display = "block";
+
+  // ✅ LOAD DATA
+  await loadAll();
+
+});
+</script>
+</body>
+</html>
+

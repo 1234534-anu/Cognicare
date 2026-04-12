@@ -1,0 +1,117 @@
+/* PAGE BACKGROUND */
+   body {
+            margin: 0;
+            padding: 0;
+            background: #4b57a4; /* fallback color */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .content img {
+            width: 100%;
+            max-width: 900px; /* adjust as needed */
+            display: block;
+        }
+
+
+/* ===== FIXED ELEMENTS ===== */
+
+img {
+    position: absolute;
+    user-select: none;
+    pointer-events: none;
+}
+
+/* Quotes */
+.quote {
+    width: 90px;
+    opacity: 0.7;
+}
+
+.quote-left {
+    top: 40px;
+    left: 40px;
+}
+
+.quote-right {
+    top: 300px;
+    right: 40px;
+}
+
+/* Birds */
+.birds {
+    width: 180px;
+}
+
+.birds-top-left {
+    top: 30px;
+    left: 120px;
+}
+
+.birds-top-right {
+    top: 80px;
+    right: 120px;
+}
+
+.birds-small-left {
+    top: 200px;
+    left: 20px;
+    width: 90px;
+}
+
+/* Clouds */
+.cloud-bottom-left {
+    width: 260px;
+    bottom: 0;
+    left: 0;
+}
+
+.cloud-bottom-right {
+    width: 260px;
+    bottom: 0;
+    right: 0;
+}
+
+.cloud-top-right {
+    width: 240px;
+    top: 40px;
+    right: 80px;
+}
+
+/* Sparkles */
+.sparkle {
+    width: 40px;
+}
+
+.sparkle-left {
+    bottom: 120px;
+    left: 160px;
+}
+
+.sparkle-right {
+    top: 260px;
+    right: 160px;
+}
+
+/* ===== MAIN CONTENT ===== */
+
+.content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: white;
+}
+
+.content h1 {
+    font-size: 48px;
+    font-weight: 700;
+}
+
+.content p {
+    font-size: 20px;
+    opacity: 0.9;
+}

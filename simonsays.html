@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Simon Pro Advanced</title>
+
+<style>
+    body {
+        background: #0a0a0f;
+        color: #fff;
+        text-align: center;
+        font-family: Arial, sans-serif;
+        padding-top: 20px;
+    }
+
+    h1 { margin: 10px; font-size: 32px; }
+
+    /* BOARD */
+    #board {
+        width: 350px;
+        height: 350px;
+        margin: 30px auto;
+        border-radius: 50%;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        overflow: hidden;
+        box-shadow: 0 0 35px rgba(0,255,255,0.25);
+    }
+
+    .pad {
+        cursor: pointer;
+        transition: 0.25s;
+        opacity: 0.9;
+    }
+    .pad.active {
+        opacity: 1;
+        filter: brightness(170%);
+        box-shadow: 0 0 25px currentColor;
+    }
+
+    #green  { background: #00ff7f; border-top-left-radius: 100%; }
+    #red    { background: #ff4c4c; border-top-right-radius: 100%; }
+    #yellow { background: #ffe66a; border-bottom-left-radius: 100%; }
+    #blue   { background: #4c6cff; border-bottom-right-radius: 100%; }
+
+    /* MODE BUTTONS */
+    #modeContainer {
+        margin: 20px auto;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .modeBtn {
+        padding: 12px 20px;
+        font-size: 16px;
+        background: #1a1a2e;
+        border: 1px solid #00eaff;
+        color: #00eaff;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    .modeBtn:hover {
+        background: #00eaff;
+        color: #000;
+    }
+
+    /* SCORE */
+    #score, #highScore {
+        margin-top: 10px;
+        font-size: 20px;
+    }
+
+    /* PROGRESS BAR */
+    #progressContainer {
+        width: 350px;
+        height: 10px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 10px;
+        margin: 15px auto;
+    }
+
+    #progressBar {
+        height: 100%;
+        width: 0%;
+        background: #00eaff;
+        border-radius: 10px;
+        transition: width 0.3s linear;
+    }
+
+    /* HISTORY */
+    #historyBox {
+        margin-top: 30px;
+        background: rgba(255,255,255,0.08);
+        padding: 15px;
+        border-radius: 10px;
+        width: 300px;
+        margin-left: auto;
+        margin-right: auto;
+        font-size: 16px;
+    }
+</style>
+</head>
+<body>
+
+<h1>SIMON SAYS — ADVANCED</h1>
+
+<!-- MODE BUTTONS -->
+<div id="modeContainer">
+    <button class="modeBtn" onclick="setMode('classic')">Classic</button>
+    <button class="modeBtn" onclick="setMode('reverse')">Reverse</button>
+    <button class="modeBtn" onclick="setMode('double')">Double Speed</button>
+    <button class="modeBtn" onclick="setMode('scramble')">Scramble</button>
+</div>
+
+<div id="score">Score: 0</div>
+<div id="highScore">High Score: 0</div>
+
+<!-- BOARD -->
+<div id="board">
+    <div class="pad" id="green"></div>
+    <div class="pad" id="red"></div>
+    <div class="pad" id="yellow"></div>
+    <div class="pad" id="blue"></div>
+</div>
+
+<!-- PROGRESS BAR -->
+<div id="progressContainer">
+    <div id="progressBar"></div>
+</div>
+
+<!-- HISTORY -->
+<div id="historyBox">
+    <div class="history-title">Top Scores</div>
+    <ul id="historyList"></ul>
+</div>
+
+<script>
+/* ----------------------------
+     VARIABLES & SOUND
+---------------------------- */
+let sequence = [];
+let userInput = [];
+let colors = ["green", "red", "yellow", "blue"];
+let speed = 800;
+let score = 0;
+let gameMode = "classic";
+
+let pads = document.querySelectorAll(".pad");
+let progressBar = document.getElementById("progressBar");
+
+let sounds = {
+    green:  new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"),
+    red:    new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg"),
+    yellow: new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg"),
+    blue:   new Audio("https://actions.google.com/sounds/v1/cartoon/boing.ogg"),
+    error:  new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg")
+};
+
+/* ----------------------------
+     MODE SELECTION
+---------------------------- */
+function setMode(mode) {
+    gameMode = mode;
+    startGame();
+}
+
+/* ----------------------------
+     START GAME
+---------------------------- */
+function startGame() {
+    sequence = [];
+    score = 0;
+    speed = gameMode === "double" ? 300 : 800;
+
+    userInput = [];
+    updateScoreUI();
+    nextRound();
+}
+
+/* ----------------------------
+     SEQUENCE AND PLAYBACK
+---------------------------- */
+function nextRound() {
+    userInput = [];
+    let next = colors[Math.floor(Math.random()*4)];
+    sequence.push(next);
+
+    updateProgressBar();
+    playSequence();
+}
+
+function playSequence() {
+    let i = 0;
+
+    const interval = setInterval(() => {
+        highlight(sequence[i]);
+        i++;
+        if (i >= sequence.length) clearInterval(interval);
+    }, speed);
+
+    if (gameMode !== "double") {
+        speed = Math.max(250, speed - 30);
+    }
+}
+
+function highlight(color) {
+    let pad = document.getElementById(color);
+    pad.classList.add("active");
+    sounds[color].play();
+
+    setTimeout(() => pad.classList.remove("active"), 300);
+}
+
+/* ----------------------------
+     USER CLICK HANDLER
+---------------------------- */
+pads.forEach(pad => {
+    pad.addEventListener("click", () => handleUserInput(pad.id));
+});
+
+function handleUserInput(color) {
+    userInput.push(color);
+    highlight(color);
+
+    if (gameMode === "reverse") {
+        checkReverseInput();
+    } else if (gameMode === "scramble") {
+        checkScrambleInput();
+    } else {
+        checkClassicInput();
+    }
+}
+
+/* ----------------------------
+     MODE LOGIC
+---------------------------- */
+function checkClassicInput() {
+    let i = userInput.length - 1;
+
+    if (userInput[i] !== sequence[i]) return gameOver();
+    if (userInput.length === sequence.length) return correctRound();
+}
+
+function checkReverseInput() {
+    let reversed = [...sequence].reverse();
+    let i = userInput.length - 1;
+
+    if (userInput[i] !== reversed[i]) return gameOver();
+    if (userInput.length === sequence.length) return correctRound();
+}
+
+function checkScrambleInput() {
+    let sortedSeq = [...sequence].sort();
+    let sortedUser = [...userInput];
+
+    sortedUser.sort();
+
+    if (sortedUser[sortedUser.length - 1] !== sortedSeq[sortedUser.length - 1])
+        return gameOver();
+
+    if (userInput.length === sequence.length) return correctRound();
+}
+
+/* ----------------------------
+     ROUND WIN
+---------------------------- */
+function correctRound() {
+    score++;
+    updateScoreUI();
+    setTimeout(nextRound, 800);
+}
+
+/* ----------------------------
+     GAME OVER
+---------------------------- */
+function gameOver() {
+    sounds.error.play();
+    alert("❌ Wrong! Final Score: " + score);
+    saveScore(score);
+    startGame();
+}
+
+/* ----------------------------
+     UI UPDATE
+---------------------------- */
+function updateScoreUI() {
+    document.getElementById("score").textContent = "Score: " + score;
+}
+
+/* Progress Bar */
+function updateProgressBar() {
+    let percent = (sequence.length / 20) * 100;
+    progressBar.style.width = Math.min(percent, 100) + "%";
+}
+
+/* ----------------------------
+     LEADERBOARD STORAGE
+---------------------------- */
+let highScore = localStorage.getItem("simHigh") || 0;
+let historyList = document.getElementById("historyList");
+document.getElementById("highScore").textContent = "High Score: " + highScore;
+
+let history = JSON.parse(localStorage.getItem("simHistory") || "[]");
+renderHistory();
+
+function saveScore(score) {
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("simHigh", highScore);
+        document.getElementById("highScore").textContent = "High Score: " + highScore;
+    }
+
+    history.push(score);
+    history.sort((a,b)=>b-a);
+    history = history.slice(0,5);
+
+    localStorage.setItem("simHistory", JSON.stringify(history));
+    renderHistory();
+}
+
+function renderHistory() {
+    historyList.innerHTML = "";
+    history.forEach((s,i)=>{
+        let li = document.createElement("li");
+        li.textContent = `${i+1}. ${s}`;
+        historyList.appendChild(li);
+    });
+}
+</script>
+
+</body>
+</html>

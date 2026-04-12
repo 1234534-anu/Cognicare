@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "TimeCapsule_Game",
+			"path": "../TimeCapsule_Game"
+		},
+		{
+			"name": "GameChanger",
+			"path": "."
+		}
+	],
+	"settings": {}
+}

@@ -1,0 +1,22 @@
+{
+  "dependencies": {
+    "body-parser": "^2.2.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1",
+    "groq-sdk": "^1.1.2",
+    "twilio": "^5.13.1"
+  },
+  "name": "gamechanger",
+  "version": "1.0.0",
+  "description": "",
+  "main": "authGuard.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

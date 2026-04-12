@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Koi Feeding Game</title>
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #87cfe6; /* fallback */
+        font-family: Arial, sans-serif;
+    }
+
+    #gameCanvas {
+    display: block;
+    background: url('pond.png') center/cover;
+}
+
+    /* Score */
+    #ui {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: white;
+        font-size: 24px;
+        font-weight: bold;
+        text-shadow: 0 0 6px black;
+    }
+
+    /* Timer Bar */
+    #timerBar {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 250px;
+        height: 20px;
+        background: rgba(255,255,255,0.3);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    #timerFill {
+        height: 100%;
+        width: 100%;
+        background: limegreen;
+        transition: width 0.1s linear;
+    }
+</style>
+</head>
+<body>
+
+<div id="ui">Score: 0</div>
+
+<div id="timerBar"><div id="timerFill"></div></div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+// -------------------------------
+// BASIC CANVAS SETUP
+
+// -------------------------------
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// -------------------------------
+// GAME STATE
+// -------------------------------
+let score = 0;
+let food = null;
+
+let timeLeft = 30; // seconds
+const timerFill = document.getElementById("timerFill");
+
+// -------------------------------
+// FISH OBJECT
+// -------------------------------
+const fish = {
+    x: canvas.width / 2,
+    y: canvas.height / 2,
+    speed: 2.5,
+    targetX: null,
+    targetY: null,
+    size: 40
+};
+
+// -------------------------------
+// EVENTS: Click to Drop Food
+// -------------------------------
+canvas.addEventListener("click", (e) => {
+    food = { x: e.clientX, y: e.clientY };
+    fish.targetX = food.x;
+    fish.targetY = food.y;
+});
+
+// -------------------------------
+// MOVEMENT TOWARD FOOD
+// -------------------------------
+function moveFish() {
+    if (fish.targetX === null) return;
+
+    let dx = fish.targetX - fish.x;
+    let dy = fish.targetY - fish.y;
+
+    let dist = Math.hypot(dx, dy);
+
+    if (dist < 5) {
+        // Fish reached the food
+        food = null;
+        fish.targetX = null;
+        fish.targetY = null;
+        score++;
+        document.getElementById("ui").innerHTML = "Score: " + score;
+        return;
+    }
+
+    fish.x += (dx / dist) * fish.speed;
+    fish.y += (dy / dist) * fish.speed;
+}
+
+// -------------------------------
+// DRAW FISH (simple shape)
+// -------------------------------
+function drawFish() {
+    ctx.save();
+    ctx.translate(fish.x, fish.y);
+
+    // Rotate fish toward movement direction
+    if (fish.targetX !== null) {
+        let angle = Math.atan2(fish.targetY - fish.y, fish.targetX - fish.x);
+        ctx.rotate(angle);
+    }
+
+    // Body
+    ctx.fillStyle = "orange";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, fish.size, fish.size * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tail
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.moveTo(-fish.size, 0);
+    ctx.lineTo(-fish.size - 20, 15);
+    ctx.lineTo(-fish.size - 20, -15);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+}
+
+// -------------------------------
+// DRAW FOOD
+// -------------------------------
+function drawFood() {
+    if (!food) return;
+
+    ctx.fillStyle = "yellow";
+    ctx.beginPath();
+    ctx.arc(food.x, food.y, 10, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+// -------------------------------
+// TIMER LOGIC
+// -------------------------------
+function updateTimer() {
+    timeLeft -= 0.016;
+    if (timeLeft < 0) timeLeft = 0;
+
+    timerFill.style.width = (timeLeft / 30 * 100) + "%";
+}
+
+// -------------------------------
+// GAME LOOP
+// -------------------------------
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    moveFish();
+    drawFish();
+    drawFood();
+    updateTimer();
+
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>

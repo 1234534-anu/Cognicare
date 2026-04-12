@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>What's Missing? — Memory Game for Alzheimer's</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #FDF6EE;
+      --card:      #FFFFFF;
+      --primary:   #E07B39;
+      --primary2:  #F4A261;
+      --soft:      #FEF0E3;
+      --border:    #F0DDCC;
+      --text:      #3A2A1A;
+      --muted:     #9A7E6A;
+      --good:      #4A9E6A;
+      --good-bg:   #E8F7EE;
+      --try:       #C0602A;
+      --try-bg:    #FEF0E3;
+      --shadow:    0 4px 24px rgba(200,120,60,0.10);
+      --radius:    20px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 28px 16px 48px;
+      color: var(--text);
+    }
+
+    .container { width: 100%; max-width: 680px; }
+
+    .header { text-align: center; margin-bottom: 28px; }
+    .header-icon { font-size: 48px; margin-bottom: 8px; }
+    .header h1 { font-size: 30px; font-weight: 900; color: var(--primary); letter-spacing: -0.5px; }
+    .header p  { font-size: 15px; color: var(--muted); margin-top: 4px; font-weight: 600; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 10px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .stat-label { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .stat-val   { font-size: 28px; font-weight: 900; color: var(--primary); }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      border: 2px solid var(--border);
+      padding: 28px 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+
+    .phase-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--soft);
+      color: var(--primary);
+      border-radius: 40px;
+      padding: 6px 18px;
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 18px;
+    }
+    .phase-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--primary); }
+
+    .instruction {
+      background: var(--soft);
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      text-align: center;
+      margin-bottom: 22px;
+      line-height: 1.5;
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .obj-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .obj-card {
+      background: var(--soft);
+      border: 2.5px solid var(--border);
+      border-radius: 16px;
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: default;
+      transition: transform 0.15s, border-color 0.2s, background 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .obj-card .emoji { font-size: 40px; line-height: 1; }
+    .obj-card .name  { font-size: 12px; font-weight: 800; color: var(--muted); text-align: center; padding: 0 4px; }
+
+    .obj-card.correct-pick {
+      background: var(--good-bg);
+      border-color: var(--good);
+      animation: pop 0.3s ease;
+    }
+    .obj-card.wrong-pick {
+      background: #FEE8E8;
+      border-color: #D94F4F;
+      animation: shake 0.3s ease;
+    }
+    .obj-card.was-missing {
+      background: var(--good-bg);
+      border-color: var(--good);
+    }
+
+    .obj-card.empty-slot {
+      background: #F5EDE4;
+      border: 2.5px dashed #D4B89A;
+      cursor: default;
+    }
+    .obj-card.empty-slot .emoji { opacity: 0; }
+    .obj-card.empty-slot .name  { opacity: 0; }
+    .question-mark {
+      font-size: 36px;
+      color: var(--primary2);
+      font-weight: 900;
+      position: absolute;
+    }
+
+    @keyframes pop   { 0%{transform:scale(1)} 50%{transform:scale(1.12)} 100%{transform:scale(1)} }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+    .choices {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+    .choice-btn {
+      background: var(--card);
+      border: 2.5px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 12px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .choice-btn:hover:not(:disabled) {
+      background: var(--soft);
+      border-color: var(--primary2);
+      transform: scale(1.02);
+    }
+    .choice-btn:active:not(:disabled) { transform: scale(0.97); }
+    .choice-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .choice-btn .ce { font-size: 28px; }
+    .choice-btn.correct { background: var(--good-bg); border-color: var(--good); color: var(--good); }
+    .choice-btn.wrong   { background: #FEE8E8;        border-color: #D94F4F;    color: #D94F4F; }
+
+    .feedback {
+      text-align: center;
+      font-size: 18px;
+      font-weight: 800;
+      min-height: 28px;
+      margin-bottom: 8px;
+    }
+    .feedback.good { color: var(--good); }
+    .feedback.bad  { color: var(--try); }
+
+    .encourage {
+      text-align: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--muted);
+      min-height: 22px;
+      margin-bottom: 18px;
+    }
+
+    .btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    .btn {
+      font-family: 'Nunito', sans-serif;
+      font-size: 17px;
+      font-weight: 800;
+      padding: 14px 32px;
+      border-radius: 14px;
+      border: 2.5px solid transparent;
+      cursor: pointer;
+      transition: background 0.12s, transform 0.08s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-primary:hover { background: #C8612A; }
+    .btn-outline { background: #fff; color: var(--primary); border-color: var(--primary2); }
+    .btn-outline:hover { background: var(--soft); }
+
+    .countdown-wrap { text-align: center; margin-bottom: 14px; }
+    .countdown-ring {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--soft);
+      border: 3px solid var(--primary2);
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--primary);
+    }
+    .countdown-label { font-size: 13px; color: var(--muted); font-weight: 700; margin-top: 4px; }
+
+    .progress-wrap { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; }
+    .prog-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--border);
+      transition: background 0.3s;
+    }
+    .prog-dot.done    { background: var(--good); }
+    .prog-dot.current { background: var(--primary); }
+    .prog-dot.wrong   { background: #D94F4F; }
+
+    .report {
+      background: var(--card);
+      border-radius: var(--radius);
+      border: 2px solid var(--border);
+      padding: 28px 24px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .report-icon { font-size: 56px; margin-bottom: 10px; }
+    .report h2 { font-size: 24px; font-weight: 900; color: var(--primary); margin-bottom: 6px; }
+    .report-sub { font-size: 15px; color: var(--muted); font-weight: 700; margin-bottom: 20px; }
+    .report-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .report-item { background: var(--soft); border-radius: 14px; padding: 14px 8px; }
+    .report-item .rl { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+    .report-item .rv { font-size: 26px; font-weight: 900; color: var(--primary); }
+    .report-msg { font-size: 16px; font-weight: 700; color: var(--text); line-height: 1.6; margin-bottom: 20px; background: var(--soft); border-radius: 14px; padding: 14px 16px; }
+
+    .start-screen { text-align: center; }
+    .start-screen .big-icon { font-size: 80px; margin-bottom: 16px; }
+    .start-screen h2 { font-size: 26px; font-weight: 900; color: var(--primary); margin-bottom: 10px; }
+    .start-screen p  { font-size: 16px; color: var(--muted); font-weight: 600; line-height: 1.7; margin-bottom: 24px; max-width: 480px; margin-left: auto; margin-right: auto; }
+    .how-it-works { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 24px; }
+    .how-step { background: var(--soft); border-radius: 14px; padding: 16px 10px; }
+    .how-step .hs-icon { font-size: 28px; margin-bottom: 6px; }
+    .how-step .hs-text { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.4; }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 500px) {
+      .obj-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+      .obj-card .emoji { font-size: 30px; }
+      .obj-card .name  { font-size: 10px; }
+      .choices { grid-template-columns: repeat(2,1fr); }
+      .how-it-works { grid-template-columns: 1fr; }
+      .report-grid { grid-template-columns: repeat(3,1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-icon">🔍</div>
+    <h1>What's Missing?</h1>
+    <p>Memory Exercise for Brain Health</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Round</div><div class="stat-val" id="stat-round">—</div></div>
+    <div class="stat"><div class="stat-label">Score</div><div class="stat-val" id="stat-score">0</div></div>
+    <div class="stat"><div class="stat-label">Correct</div><div class="stat-val" id="stat-correct">0</div></div>
+  </div>
+
+  <!-- START SCREEN -->
+  <div class="card" id="screen-start">
+    <div class="start-screen">
+      <div class="big-icon">🍎🔑🎈🐶</div>
+      <h2>How to Play</h2>
+      <p>Look carefully at the objects on screen. One will disappear — can you remember which one is missing?</p>
+      <div class="how-it-works">
+        <div class="how-step">
+          <div class="hs-icon">👀</div>
+          <div class="hs-text">Look at all the objects carefully</div>
+        </div>
+        <div class="how-step">
+          <div class="hs-icon">🙈</div>
+          <div class="hs-text">One object disappears!</div>
+        </div>
+        <div class="how-step">
+          <div class="hs-icon">🤔</div>
+          <div class="hs-text">Choose which one went missing</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="startGame()">▶ Start Game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="screen-game" class="hidden">
+    <div class="progress-wrap" id="progress-dots"></div>
+    <div class="card">
+      <div class="phase-badge">
+        <div class="phase-dot"></div>
+        <span id="phase-label">👀 Memorise Phase</span>
+      </div>
+      <div class="instruction" id="instruction">Look carefully at all the objects below. Try to remember them!</div>
+      <div class="countdown-wrap" id="countdown-wrap">
+        <div class="countdown-ring" id="countdown-num">5</div>
+        <div class="countdown-label">seconds to memorise</div>
+      </div>
+      <div class="obj-grid" id="obj-grid"></div>
+      <div class="choices hidden" id="choices"></div>
+      <div class="feedback" id="feedback"></div>
+      <div class="encourage" id="encourage"></div>
+      <div class="btn-row" id="btn-row"></div>
+    </div>
+  </div>
+
+  <!-- REPORT SCREEN -->
+  <div id="screen-report" class="hidden">
+    <div class="report">
+      <div class="report-icon" id="r-icon">🌟</div>
+      <h2 id="r-title">Well Done!</h2>
+      <div class="report-sub" id="r-sub">Session Complete</div>
+      <div class="report-grid">
+        <div class="report-item"><div class="rl">Score</div><div class="rv" id="r-score">0</div></div>
+        <div class="report-item"><div class="rl">Correct</div><div class="rv" id="r-correct">0</div></div>
+        <div class="report-item"><div class="rl">Rounds</div><div class="rv" id="r-rounds">0</div></div>
+      </div>
+      <div class="report-msg" id="r-msg"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="startGame()">🔄 Play Again</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const ALL_OBJECTS = [
+  { emoji: '🍎', name: 'Apple'      },
+  { emoji: '🍌', name: 'Banana'     },
+  { emoji: '🍊', name: 'Orange'     },
+  { emoji: '🍇', name: 'Grapes'     },
+  { emoji: '🍓', name: 'Strawberry' },
+  { emoji: '🍋', name: 'Lemon'      },
+  { emoji: '🍉', name: 'Watermelon' },
+  { emoji: '🍑', name: 'Peach'      },
+  { emoji: '🐶', name: 'Dog'        },
+  { emoji: '🐱', name: 'Cat'        },
+  { emoji: '🐦', name: 'Bird'       },
+  { emoji: '🐠', name: 'Fish'       },
+  { emoji: '🐇', name: 'Rabbit'     },
+  { emoji: '🐘', name: 'Elephant'   },
+  { emoji: '🌸', name: 'Flower'     },
+  { emoji: '🌳', name: 'Tree'       },
+  { emoji: '☀️', name: 'Sun'        },
+  { emoji: '⭐', name: 'Star'       },
+  { emoji: '🌙', name: 'Moon'       },
+  { emoji: '🌈', name: 'Rainbow'    },
+  { emoji: '🔑', name: 'Key'        },
+  { emoji: '📚', name: 'Book'       },
+  { emoji: '✏️', name: 'Pencil'     },
+  { emoji: '☕', name: 'Cup'        },
+  { emoji: '🎈', name: 'Balloon'    },
+  { emoji: '🎵', name: 'Music'      },
+  { emoji: '🏠', name: 'House'      },
+  { emoji: '🚗', name: 'Car'        },
+  { emoji: '🌂', name: 'Umbrella'   },
+  { emoji: '👒', name: 'Hat'        },
+  { emoji: '🧦', name: 'Sock'       },
+  { emoji: '🍕', name: 'Pizza'      },
+  { emoji: '🍞', name: 'Bread'      },
+  { emoji: '🥚', name: 'Egg'        },
+  { emoji: '🧁', name: 'Cupcake'    },
+  { emoji: '🍪', name: 'Cookie'     },
+];
+
+const LEVELS = [
+  { objects: 4, memoriseTime: 6  },
+  { objects: 5, memoriseTime: 6  },
+  { objects: 6, memoriseTime: 7  },
+  { objects: 7, memoriseTime: 8  },
+  { objects: 8, memoriseTime: 9  },
+];
+
+const TOTAL_ROUNDS = 10;
+const ENCOURAGEMENTS = [
+  'Wonderful memory! 🌟','Excellent! Keep going! 💪',
+  'Your brain is sharp! 🧠','Amazing recall! 🎉',
+  'You remembered! ✨','Great job! 👏','Outstanding! 🌈',
+];
+const TRY_AGAIN = [
+  'Good try! Keep going! 💙','Nice effort! You can do it! 💙',
+  'Almost! Try the next one! 💙','Don\'t worry — keep going! 💙',
+];
+
+let score=0, correctCount=0, roundNum=0, roundResults=[];
+let currentObjs=[], missingObj=null;
+let countdownVal=0, countdownTimer=null, gamePhase='idle';
+
+let audioCtx=null;
+function getAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function playTone(freq,dur,type='sine',vol=0.15){
+  try{const a=getAudio(),o=a.createOscillator(),g=a.createGain();
+  o.connect(g);g.connect(a.destination);o.type=type;
+  o.frequency.setValueAtTime(freq,a.currentTime);
+  g.gain.setValueAtTime(vol,a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+dur);
+  o.start();o.stop(a.currentTime+dur);}catch(e){}}
+function playCorrect(){playTone(660,0.1);setTimeout(()=>playTone(880,0.12),100);}
+function playWrong()  {playTone(260,0.25,'sawtooth',0.10);}
+function playReveal() {playTone(440,0.08,'sine',0.07);}
+function playFinish() {[523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.15),i*90));}
+
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+function getLevelForRound(r){
+  if(r<=2)return LEVELS[0];if(r<=4)return LEVELS[1];
+  if(r<=6)return LEVELS[2];if(r<=8)return LEVELS[3];return LEVELS[4];
+}
+
+function showScreen(id){
+  ['screen-start','screen-game','screen-report'].forEach(s=>{
+    document.getElementById(s).classList.toggle('hidden',s!==id);
+  });
+}
+
+function updateStats(){
+  document.getElementById('stat-round').textContent  =roundNum>0?roundNum+'/'+TOTAL_ROUNDS:'—';
+  document.getElementById('stat-score').textContent  =score;
+  document.getElementById('stat-correct').textContent=correctCount;
+}
+
+function updateProgressDots(){
+  const wrap=document.getElementById('progress-dots');
+  wrap.innerHTML='';
+  for(let i=0;i<TOTAL_ROUNDS;i++){
+    const d=document.createElement('div');
+    let cls='prog-dot';
+    if(i<roundNum-1)        cls+=' '+(roundResults[i]||'done');
+    else if(i===roundNum-1) cls+=' current';
+    d.className=cls;
+    wrap.appendChild(d);
+  }
+}
+
+function startGame(){
+  score=0;correctCount=0;roundNum=0;roundResults=[];
+  showScreen('screen-game');updateStats();nextRound();
+}
+
+function nextRound(){
+  if(roundNum>=TOTAL_ROUNDS){endGame();return;}
+  roundNum++;gamePhase='memorise';
+  updateStats();updateProgressDots();
+  const level=getLevelForRound(roundNum);
+  const pool=shuffle(ALL_OBJECTS);
+  currentObjs=pool.slice(0,level.objects);
+  missingObj=currentObjs[Math.floor(Math.random()*currentObjs.length)];
+  document.getElementById('phase-label').textContent='👀 Memorise Phase';
+  document.getElementById('instruction').textContent='Look carefully at all the objects! Try to remember each one.';
+  document.getElementById('feedback').textContent='';
+  document.getElementById('encourage').textContent='';
+  document.getElementById('countdown-wrap').classList.remove('hidden');
+  document.getElementById('choices').classList.add('hidden');
+  document.getElementById('btn-row').innerHTML='';
+  renderObjectGrid(currentObjs,false);
+  startCountdown(level.memoriseTime,()=>startRecallPhase());
+}
+
+function startCountdown(seconds,onDone){
+  countdownVal=seconds;
+  document.getElementById('countdown-num').textContent=countdownVal;
+  clearInterval(countdownTimer);
+  countdownTimer=setInterval(()=>{
+    countdownVal--;
+    document.getElementById('countdown-num').textContent=countdownVal;
+    if(countdownVal<=0){clearInterval(countdownTimer);onDone();}
+  },1000);
+}
+
+function startRecallPhase(){
+  gamePhase='recall';
+  document.getElementById('phase-label').textContent='🤔 Recall Phase';
+  document.getElementById('instruction').textContent='One object has disappeared! Which one is missing? Choose below.';
+  document.getElementById('countdown-wrap').classList.add('hidden');
+  renderObjectGrid(currentObjs,true);
+  const distractors=shuffle(ALL_OBJECTS.filter(o=>!currentObjs.find(c=>c.name===o.name))).slice(0,3);
+  const choices=shuffle([missingObj,...distractors]);
+  renderChoices(choices);
+  playReveal();
+}
+
+function renderObjectGrid(objs,showMissingSlot){
+  const grid=document.getElementById('obj-grid');
+  grid.innerHTML='';
+  objs.forEach(obj=>{
+    const card=document.createElement('div');
+    const isMissing=showMissingSlot&&obj.name===missingObj.name;
+    card.className='obj-card'+(isMissing?' empty-slot':'');
+    if(isMissing){const qm=document.createElement('div');qm.className='question-mark';qm.textContent='?';card.appendChild(qm);}
+    const em=document.createElement('div');em.className='emoji';em.textContent=obj.emoji;
+    const nm=document.createElement('div');nm.className='name'; nm.textContent=obj.name;
+    card.appendChild(em);card.appendChild(nm);
+    grid.appendChild(card);
+  });
+}
+
+function renderChoices(choices){
+  const wrap=document.getElementById('choices');
+  wrap.innerHTML='';wrap.classList.remove('hidden');
+  choices.forEach(obj=>{
+    const btn=document.createElement('button');
+    btn.className='choice-btn';
+    btn.innerHTML=`<span class="ce">${obj.emoji}</span><span>${obj.name}</span>`;
+    btn.onclick=()=>handleAnswer(obj,btn,choices);
+    wrap.appendChild(btn);
+  });
+}
+
+function handleAnswer(chosen,btn,allChoices){
+  if(gamePhase!=='recall')return;
+  gamePhase='feedback';
+  document.querySelectorAll('.choice-btn').forEach(b=>b.disabled=true);
+  const correct=chosen.name===missingObj.name;
+  if(correct){
+    btn.classList.add('correct');
+    btn.innerHTML=`<span class="ce">${chosen.emoji}</span><span>${chosen.name} ✓</span>`;
+    score+=10;correctCount++;roundResults.push('done');
+    document.getElementById('feedback').textContent='🎉 Correct! That was the missing one!';
+    document.getElementById('feedback').className='feedback good';
+    document.getElementById('encourage').textContent=ENCOURAGEMENTS[Math.floor(Math.random()*ENCOURAGEMENTS.length)];
+    playCorrect();revealMissingSlot(true);
+  } else {
+    btn.classList.add('wrong');
+    btn.innerHTML=`<span class="ce">${chosen.emoji}</span><span>${chosen.name} ✗</span>`;
+    document.querySelectorAll('.choice-btn').forEach(b=>{
+      const ns=b.querySelector('span:last-child');
+      if(ns&&ns.textContent.startsWith(missingObj.name)){
+        b.classList.add('correct');
+        b.innerHTML=`<span class="ce">${missingObj.emoji}</span><span>${missingObj.name} ✓</span>`;
+      }
+    });
+    roundResults.push('wrong');
+    document.getElementById('feedback').textContent=`It was the ${missingObj.name} ${missingObj.emoji}`;
+    document.getElementById('feedback').className='feedback bad';
+    document.getElementById('encourage').textContent=TRY_AGAIN[Math.floor(Math.random()*TRY_AGAIN.length)];
+    playWrong();revealMissingSlot(false);
+  }
+  updateStats();updateProgressDots();
+  const btnRow=document.getElementById('btn-row');
+  btnRow.innerHTML='';
+  const nextBtn=document.createElement('button');
+  nextBtn.className='btn btn-primary';
+  nextBtn.textContent=roundNum<TOTAL_ROUNDS?'→ Next Round':'🏁 See Results';
+  nextBtn.onclick=()=>{
+    document.getElementById('feedback').textContent='';
+    document.getElementById('encourage').textContent='';
+    document.getElementById('choices').classList.add('hidden');
+    nextRound();
+  };
+  btnRow.appendChild(nextBtn);
+}
+
+function revealMissingSlot(wasCorrect){
+  const cards=document.getElementById('obj-grid').querySelectorAll('.obj-card');
+  cards.forEach((card,i)=>{
+    if(currentObjs[i]&&currentObjs[i].name===missingObj.name){
+      card.classList.remove('empty-slot');
+      card.classList.add('was-missing');
+      const qm=card.querySelector('.question-mark');
+      if(qm)qm.remove();
+      card.querySelector('.emoji').style.opacity='1';
+      card.querySelector('.name').style.opacity='1';
+    }
+  });
+}
+
+function endGame(){
+  clearInterval(countdownTimer);showScreen('screen-report');
+  const pct=Math.round(correctCount/TOTAL_ROUNDS*100);
+  document.getElementById('r-score').textContent  =score;
+  document.getElementById('r-correct').textContent=correctCount+'/'+TOTAL_ROUNDS;
+  document.getElementById('r-rounds').textContent =TOTAL_ROUNDS;
+  let icon,title,msg;
+  if(pct>=80){icon='🏆';title='Excellent Memory!';msg='Your short-term visual memory is very strong. Regular practice like this helps keep your brain healthy and active. Wonderful work!';}
+  else if(pct>=60){icon='🌟';title='Great Job!';msg='You remembered well! Each time you play, your brain gets a little stronger. Keep up the wonderful practice!';}
+  else if(pct>=40){icon='💙';title='Well Done!';msg='Nice effort! Memory games improve with practice. Play again to keep exercising your brain — you are doing wonderfully!';}
+  else{icon='💛';title='Keep Going!';msg='Every time you play is great for your brain, no matter the score. You are doing something wonderful for yourself — keep it up! 💙';}
+  document.getElementById('r-icon').textContent =icon;
+  document.getElementById('r-title').textContent=title;
+  document.getElementById('r-msg').textContent  =msg;
+  document.getElementById('r-sub').textContent  =`You got ${correctCount} out of ${TOTAL_ROUNDS} correct — Score: ${score}`;
+  playFinish();
+}
+</script>
+</body>
+</html>

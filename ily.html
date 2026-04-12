@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Follow the Light</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const supabaseClient = supabase.createClient(
+  "https://qzbydtiwleswazfzsqtp.supabase.co",
+  "sb_publishable_uBg6lQPOqdvVUb8kg4MOkA_Hx_1srIK"
+);
+</script>
+
+<style>
+body { background:#f3f6f9; font-family: Inter, system-ui; }
+
+/* GAME */
+.game-wrap {
+  min-height: 100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2rem;
+  transform: scale(1.15);
+}
+
+.grid {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:1rem;
+  padding:1.5rem;
+  background:white;
+  border-radius:1rem;
+  border:3px solid #cbd5e1;
+  width:360px;
+}
+
+.cell {
+  aspect-ratio:1;
+  border-radius:1rem;
+  background:#94a3b8;
+  cursor:pointer;
+  transition:.2s;
+}
+
+.cell.lit { background:#fbbf24; animation:pulse 1s infinite; }
+.cell.correct { background:#22c55e; box-shadow:0 0 20px #22c55e; }
+.cell.wrong { background:#ef4444; box-shadow:0 0 20px #ef4444; }
+
+@keyframes pulse { 50% { opacity:.6; } }
+
+/* BUTTONS */
+.btn-blue {
+  background:#4a9be6;
+  color:white;
+  padding:1rem 2.5rem;
+  border-radius:.75rem;
+  font-weight:600;
+}
+
+.btn-green {
+  background:#4fbf79;
+  color:white;
+  padding:1rem 2.5rem;
+  border-radius:.75rem;
+  font-weight:600;
+}
+
+/* SCREENS */
+.screen { display:none; }
+.screen.active { display:block; }
+.card {
+  background:white;
+  padding:2rem;
+  border-radius:1rem;
+}
+</style>
+</head>
+
+<body>
+
+<!-- GAME -->
+<div id="game" class="screen active">
+  <div class="game-wrap">
+    <h1 class="text-3xl font-bold">Follow the Light</h1>
+    <div id="status" class="text-lg font-semibold">Press Start</div>
+
+    <div class="grid" id="grid"></div>
+
+    <button class="btn-blue" onclick="startGame()">Start Game</button>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="results" class="screen">
+  <div class="min-h-screen flex flex-col items-center justify-center gap-6">
+    <h1 class="text-3xl font-bold">Session Complete</h1>
+
+    <div class="card text-center w-[420px]">
+      <p class="opacity-70">Movement Coordination Index (MCI)</p>
+      <div id="mci" class="text-6xl font-bold my-4">0</div>
+      <p class="opacity-60">/ 1000</p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div class="card text-center">
+        <p class="opacity-70">Motor Accuracy</p>
+        <div id="accuracy" class="text-3xl font-bold">--%</div>
+        <p class="opacity-60">Good precision</p>
+      </div>
+
+      <div class="card text-center">
+        <p class="opacity-70">Movement Response</p>
+        <div id="latency" class="text-3xl font-bold">--s</div>
+        <p class="opacity-60">Good pace</p>
+      </div>
+
+      <div class="card text-center">
+        <p class="opacity-70">Sequence Control</p>
+        <div id="sequence" class="text-3xl font-bold">-- / --</div>
+        <p class="opacity-60">Good retention</p>
+      </div>
+
+      <div class="card text-center">
+        <p class="opacity-70">Hesitation</p>
+        <div class="text-3xl font-bold">0 pauses</div>
+        <p class="opacity-60">No hesitation</p>
+      </div>
+    </div>
+
+    <div class="flex gap-4 mt-4">
+      <button class="btn-blue" onclick="location.reload()">Play Again</button>
+      <button class="btn-green" onclick="openHistory()">View History</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="history" class="screen">
+  <div class="min-h-screen p-10">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold">Session History</h1>
+      <button class="btn-green" onclick="backToResults()">Back</button>
+    </div>
+    <div id="historyList" class="space-y-4"></div>
+  </div>
+</div>
+
+<script>
+const grid = document.getElementById("grid");
+const cells = [];
+let state = {
+  level: 1,
+  maxLevel: 6,
+  seq: [],
+  index: 0,
+  taps: 0,
+  correct: 0,
+  latencies: [],
+  start: 0,
+  showing: false
+};
+
+for (let i=0;i<9;i++) {
+  const c = document.createElement("div");
+  c.className = "cell";
+  c.onclick = () => tap(i);
+  grid.appendChild(c);
+  cells.push(c);
+}
+
+function startGame() {
+  document.querySelector(".btn-blue").style.display="none";
+  nextLevel();
+}
+
+function nextLevel() {
+  if (state.level > state.maxLevel) return endGame();
+  state.seq = Array.from({length:state.level},()=>Math.floor(Math.random()*9));
+  state.index = 0;
+  showSequence();
+}
+
+async function showSequence() {
+  state.showing = true;
+  document.getElementById("status").textContent = "Watch";
+  for (let i of state.seq) {
+    cells[i].classList.add("lit");
+    await delay(600);
+    cells[i].classList.remove("lit");
+    await delay(200);
+  }
+  document.getElementById("status").textContent = "Your turn";
+  await delay(800);
+  document.getElementById("status").textContent = "Tap the pattern";
+  state.start = Date.now();
+  state.showing = false;
+}
+
+function tap(i) {
+  if (state.showing) return;
+  state.taps++;
+  state.latencies.push((Date.now()-state.start)/1000);
+
+  if (i === state.seq[state.index]) {
+    state.correct++;
+    cells[i].classList.add("correct");
+    setTimeout(()=>cells[i].classList.remove("correct"),400);
+    state.index++;
+    state.start = Date.now();
+    if (state.index === state.seq.length) {
+      state.level++;
+      setTimeout(nextLevel,700);
+    }
+  } else {
+    cells[i].classList.add("wrong");
+    setTimeout(()=>cells[i].classList.remove("wrong"),400);
+    state.level++;
+    setTimeout(nextLevel,700);
+  }
+}
+
+async function endGame() {
+  switchScreen("results");
+
+  const acc = state.correct / state.taps;
+  const avgLat = state.latencies.reduce((a,b)=>a+b,0)/state.latencies.length;
+  const mci = Math.round(200 + acc * (1 - avgLat/4) * 800);
+
+  mciEl(mci, acc, avgLat);
+
+  await supabaseClient.from("follow_the_light_sessions").insert({
+    level: state.maxLevel,
+    accuracy: acc,
+    avg_latency: avgLat,
+    mci_score: mci,
+    created_at: new Date()
+  });
+}
+
+function mciEl(mci, acc, lat) {
+  document.getElementById("mci").textContent = mci;
+  document.getElementById("accuracy").textContent = Math.round(acc*100)+"%";
+  document.getElementById("latency").textContent = lat.toFixed(1)+"s";
+  document.getElementById("sequence").textContent = `${state.maxLevel} / ${state.maxLevel}`;
+}
+
+async function openHistory() {
+  switchScreen("history");
+  const { data } = await supabaseClient
+    .from("follow_the_light_sessions")
+    .select("*")
+    .order("created_at",{ascending:false});
+
+  document.getElementById("historyList").innerHTML = data.map(s=>`
+    <div class="card flex justify-between items-center">
+      <div>
+        ${new Date(s.created_at).toLocaleString()} &nbsp;
+        Level ${s.level} &nbsp;
+        Accuracy ${(s.accuracy*100).toFixed(0)}% &nbsp;
+        Latency ${s.avg_latency.toFixed(1)}s
+      </div>
+      <div class="text-2xl font-bold">${s.mci_score}</div>
+    </div>
+  `).join("");
+}
+
+function backToResults() { switchScreen("results"); }
+function switchScreen(id) {
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+const delay = ms => new Promise(r=>setTimeout(r,ms));
+</script>
+
+</body>
+</html>

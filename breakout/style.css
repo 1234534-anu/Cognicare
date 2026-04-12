@@ -1,0 +1,28 @@
+body {
+  margin: 0;
+  background: #ffffff;
+  font-family: system-ui;
+  text-align: center;
+}
+
+.top-bar {
+  padding: 10px;
+}
+
+button {
+  padding: 6px 14px;
+  margin: 0 6px;
+  cursor: pointer;
+}
+
+canvas {
+  border: 3px solid black;
+  display: block;
+  margin: 10px auto;
+  background: #fff;
+}
+
+.hint {
+  margin-top: 10px;
+  color: #444;
+}

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Simon Says — Advanced</title>
+<link rel="stylesheet" href="GameStyle.css">
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="topBar">
+    <button class="quitBtn" onclick="quitGame()">✖ Quit</button>
+    <h2>SIMON SAYS — ADVANCED</h2>
+    <button class="helpBtn" onclick="showHelp()">❓ How to Play</button>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="container">
+
+    <!-- BOX 1: CATEGORIES -->
+    <div class="card leftCard">
+        <h3>Categories</h3>
+        <button onclick="setMode('classic')">Classic</button>
+        <button onclick="setMode('reverse')">Reverse</button>
+        <button onclick="setMode('double')">Double Speed</button>
+        <button onclick="setMode('scramble')">Scramble</button>
+    </div>
+
+    <!-- BOX 2: GAME -->
+    <div class="card gameCard">
+        <h3>Simon Game</h3>
+
+        <div id="board">
+            <div class="pad" id="green"></div>
+            <div class="pad" id="red"></div>
+            <div class="pad" id="yellow"></div>
+            <div class="pad" id="blue"></div>
+        </div>
+
+        <div id="progressContainer">
+            <div id="progressBar"></div>
+        </div>
+    </div>
+
+    <!-- BOX 3: SCORE -->
+    <div class="card rightCard">
+        <h3>Score Panel</h3>
+        <p id="score">Score: 0</p>
+        <p id="highScore">High Score: 0</p>
+
+        <h4>Top Scores</h4>
+        <ul id="historyList"></ul>
+    </div>
+
+</div>
+
+<!-- HOW TO PLAY MODAL -->
+<div id="helpModal" class="modal">
+    <div class="modalContent">
+        <h3>How to Play</h3>
+        <p>
+            Watch the color pattern shown by the game.<br><br>
+            Repeat the same sequence by clicking the colors.<br><br>
+            Each round adds one new color.<br><br>
+            Different modes change how you recall the pattern.
+        </p>
+        <button onclick="closeHelp()">Close</button>
+    </div>
+</div>
+
+<script src="GameLogic.js"></script>
+</body>
+</html>

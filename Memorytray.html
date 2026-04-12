@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Tray Game</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+    }
+    
+    .item-card {
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .item-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .covered {
+      background: repeating-linear-gradient(
+        45deg,
+        #6366f1,
+        #6366f1 10px,
+        #4f46e5 10px,
+        #4f46e5 20px
+      );
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full">
+  <div id="app" class="h-full w-full overflow-auto bg-gradient-to-br from-blue-50 to-indigo-100"></div>
+  <script>
+    const defaultConfig = {
+      game_title: "Memory Tray Game",
+      instruction_text: "Study the items carefully. You'll have limited time before they're covered!",
+      start_button_text: "Start Game",
+      submit_button_text: "Check Answers",
+      background_color: "#eff6ff",
+      surface_color: "#ffffff",
+      text_color: "#1e293b",
+      primary_action_color: "#3b82f6",
+      secondary_action_color: "#6366f1",
+      font_family: "Inter",
+      font_size: 16
+    };
+
+    const allItems = [
+      { name: "Key", emoji: "🔑" },
+      { name: "Coin", emoji: "🪙" },
+      { name: "Watch", emoji: "⌚" },
+      { name: "Spoon", emoji: "🥄" },
+      { name: "Pen", emoji: "✒️" },
+      { name: "Ring", emoji: "💍" },
+      { name: "Glasses", emoji: "👓" },
+      { name: "Phone", emoji: "📱" },
+      { name: "Book", emoji: "📖" },
+      { name: "Cup", emoji: "☕" },
+      { name: "Scissors", emoji: "✂️" },
+      { name: "Envelope", emoji: "✉️" },
+      { name: "Wallet", emoji: "👛" },
+      { name: "Brush", emoji: "🖌️" },
+      { name: "Clock", emoji: "🕐" }
+    ];
+    
+    const itemCounts = {
+      easy: 3,
+      medium: 5,
+      hard: 8
+    };
+
+    let gameState = {
+      difficulty: 'medium',
+      phase: 'setup',
+      currentItems: [],
+      studyTime: 15,
+      timeRemaining: 15,
+      selectedAnswers: new Set(),
+      timer: null,
+      recallStartTime: null,
+      firstCorrectClickTime: null,
+      selectionTimestamps: [],
+      metrics: null
+    };
+
+    function shuffleArray(array) {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    }
+
+    function startGame() {
+      gameState.phase = 'studying';
+      const itemCount = itemCounts[gameState.difficulty];
+      gameState.currentItems = shuffleArray(allItems).slice(0, itemCount);
+      gameState.studyTime = gameState.difficulty === 'easy' ? 20 : gameState.difficulty === 'medium' ? 15 : 10;
+      gameState.timeRemaining = gameState.studyTime;
+      gameState.selectedAnswers.clear();
+      
+      render();
+      startTimer();
+    }
+
+    function startTimer() {
+      if (gameState.timer) clearInterval(gameState.timer);
+      
+      gameState.timer = setInterval(() => {
+        gameState.timeRemaining--;
+        
+        if (gameState.timeRemaining <= 0) {
+          clearInterval(gameState.timer);
+          gameState.phase = 'recall';
+          gameState.timer = null;
+          gameState.recallStartTime = Date.now();
+          gameState.firstCorrectClickTime = null;
+          gameState.selectionTimestamps = [];
+        }
+        
+        render();
+      }, 1000);
+    }
+
+    function toggleAnswer(itemName) {
+      const clickTime = Date.now();
+      const correctItems = new Set(gameState.currentItems.map(item => item.name));
+      const isCorrect = correctItems.has(itemName);
+      
+      if (gameState.selectedAnswers.has(itemName)) {
+        gameState.selectedAnswers.delete(itemName);
+      } else {
+        gameState.selectedAnswers.add(itemName);
+        gameState.selectionTimestamps.push({
+          time: clickTime,
+          correct: isCorrect
+        });
+        
+        // Track first correct click
+        if (isCorrect && gameState.firstCorrectClickTime === null) {
+          gameState.firstCorrectClickTime = clickTime;
+        }
+      }
+      render();
+    }
+
+    function calculateMetrics() {
+      const correctItems = new Set(gameState.currentItems.map(item => item.name));
+      const correctSelections = Array.from(gameState.selectedAnswers).filter(name => correctItems.has(name));
+      const incorrectSelections = Array.from(gameState.selectedAnswers).filter(name => !correctItems.has(name));
+      
+      // 1️⃣ Episodic Memory Accuracy
+      const episodicAccuracy = correctSelections.length / gameState.currentItems.length;
+      
+      // 2️⃣ Active Recall Strength (with UI cost adjustment)
+      let activeRecallSpeed = 0;
+      let adjustedRecallSpeed = 0;
+      let normalizedRecall = 0;
+      if (gameState.firstCorrectClickTime && gameState.recallStartTime) {
+        // Raw time to first correct selection
+        activeRecallSpeed = (gameState.firstCorrectClickTime - gameState.recallStartTime) / 1000; // in seconds
+        
+        // Calculate UI cost adjustment: count clicks before first correct
+        let clicksBeforeCorrect = 0;
+        for (let timestamp of gameState.selectionTimestamps) {
+          if (timestamp.time < gameState.firstCorrectClickTime) {
+            clicksBeforeCorrect++;
+          } else if (timestamp.time === gameState.firstCorrectClickTime && timestamp.correct) {
+            break;
+          }
+        }
+        
+        // UI penalty: 0.4s per click
+        const uiPenalty = clicksBeforeCorrect * 0.4;
+        adjustedRecallSpeed = Math.max(0.5, activeRecallSpeed - uiPenalty); // floor at 0.5s to prevent negative
+        
+        // Normalize recall speed using adjusted time: 1.5s = excellent, 7.5s = slow
+        normalizedRecall = Math.max(0, Math.min(1, 1 - (adjustedRecallSpeed - 1.5) / 6));
+      }
+      
+      // 3️⃣ Inhibitory Control
+      const totalSelections = gameState.selectedAnswers.size;
+      const falseAlarmRate = totalSelections > 0 ? incorrectSelections.length / totalSelections : 0;
+      const inhibitoryControlScore = 1 - falseAlarmRate;
+      
+      // 🧮 Composite Memory Tray Index (MTI v2) - Difficulty Normalized
+      // Step 1: Calculate difficulty weight (8 items = full difficulty)
+      const difficultyWeight = gameState.currentItems.length / 8;
+      
+      // Step 2: Calculate raw MTI with all components
+      let mtiRaw = 0;
+      if (activeRecallSpeed > 0) {
+        mtiRaw = (episodicAccuracy * inhibitoryControlScore * normalizedRecall) * difficultyWeight;
+      }
+      
+      // Step 3: Scale MTI for display (200-1000 range)
+      const displayedMTI = Math.round(Math.max(200, Math.min(1000, 200 + mtiRaw * 800)));
+      
+      return {
+        episodicAccuracy,
+        activeRecallSpeed,
+        adjustedRecallSpeed,
+        normalizedRecall,
+        falseAlarmRate,
+        inhibitoryControlScore,
+        difficultyWeight,
+        mtiRaw,
+        displayedMTI,
+        correctCount: correctSelections.length,
+        incorrectCount: incorrectSelections.length,
+        totalItems: gameState.currentItems.length,
+        totalSelections
+      };
+    }
+    
+    function checkAnswers() {
+      gameState.metrics = calculateMetrics();
+      gameState.phase = 'results';
+      if (gameState.timer) {
+        clearInterval(gameState.timer);
+        gameState.timer = null;
+      }
+      render();
+    }
+
+    function resetGame() {
+      gameState.phase = 'setup';
+      gameState.selectedAnswers.clear();
+      if (gameState.timer) {
+        clearInterval(gameState.timer);
+        gameState.timer = null;
+      }
+      render();
+    }
+
+    function changeDifficulty(level) {
+      gameState.difficulty = level;
+      resetGame();
+    }
+
+    function render() {
+      const config = window.elementSdk?.config || defaultConfig;
+      const app = document.getElementById('app');
+      
+      const customFont = config.font_family || defaultConfig.font_family;
+      const baseFontStack = 'system-ui, -apple-system, sans-serif';
+      const baseSize = config.font_size || defaultConfig.font_size;
+      
+      const bgColor = config.background_color || defaultConfig.background_color;
+      const surfaceColor = config.surface_color || defaultConfig.surface_color;
+      const textColor = config.text_color || defaultConfig.text_color;
+      const primaryColor = config.primary_action_color || defaultConfig.primary_action_color;
+      const secondaryColor = config.secondary_action_color || defaultConfig.secondary_action_color;
+      
+      app.style.background = `linear-gradient(135deg, ${bgColor}, ${secondaryColor}20)`;
+      
+      let content = '';
+      
+      if (gameState.phase === 'setup') {
+        content = `
+          <div class="min-h-full flex items-center justify-center p-6">
+            <div class="w-full max-w-2xl fade-in" style="background-color: ${surfaceColor}; border-radius: 16px; padding: 48px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);">
+              <h1 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 2}px; font-weight: 700; color: ${textColor}; margin-bottom: 16px; text-align: center;">
+                ${config.game_title || defaultConfig.game_title}
+              </h1>
+              
+              <p style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor}; margin-bottom: 32px; text-align: center; opacity: 0.8;">
+                ${config.instruction_text || defaultConfig.instruction_text}
+              </p>
+              
+              <div style="margin-bottom: 32px;">
+                <label style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.9}px; font-weight: 600; color: ${textColor}; display: block; margin-bottom: 12px;">
+                  Difficulty Level
+                </label>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                  ${['easy', 'medium', 'hard'].map(level => `
+                    <button 
+                      onclick="changeDifficulty('${level}')"
+                      style="font-family: ${customFont}, ${baseFontStack}; padding: 12px 24px; border-radius: 8px; font-size: ${baseSize * 0.9}px; font-weight: 600; cursor: pointer; border: 2px solid ${gameState.difficulty === level ? primaryColor : '#e2e8f0'}; background-color: ${gameState.difficulty === level ? primaryColor : surfaceColor}; color: ${gameState.difficulty === level ? '#ffffff' : textColor}; transition: all 0.2s;">
+                      ${level.charAt(0).toUpperCase() + level.slice(1)} (${itemCounts[level]})
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
+              
+              <button 
+                onclick="startGame()"
+                style="font-family: ${customFont}, ${baseFontStack}; width: 100%; padding: 16px; border-radius: 8px; background-color: ${primaryColor}; color: #ffffff; font-size: ${baseSize * 1.1}px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; margin-bottom: 12px;"
+                onmouseover="this.style.backgroundColor='${adjustColor(primaryColor, -20)}'"
+                onmouseout="this.style.backgroundColor='${primaryColor}'">
+                ${config.start_button_text || defaultConfig.start_button_text}
+              </button>
+              
+              <a 
+                href="test.html" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style="font-family: ${customFont}, ${baseFontStack}; display: block; width: 100%; padding: 16px; border-radius: 8px; background-color: ${surfaceColor}; color: ${textColor}; border: 2px solid ${secondaryColor}; font-size: ${baseSize}px; font-weight: 600; text-align: center; text-decoration: none; cursor: pointer; transition: all 0.2s; box-sizing: border-box;"
+                onmouseover="this.style.backgroundColor='${secondaryColor}10'"
+                onmouseout="this.style.backgroundColor='${surfaceColor}'">
+                🏠 Back to Homepage
+              </a>
+            </div>
+          </div>
+        `;
+      } else if (gameState.phase === 'studying') {
+        content = `
+          <div class="min-h-full flex items-center justify-center p-6">
+            <div class="w-full max-w-4xl fade-in">
+              <div style="background-color: ${surfaceColor}; border-radius: 16px; padding: 32px; margin-bottom: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                  <h2 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.5}px; font-weight: 700; color: ${textColor};">
+                    Study These Items
+                  </h2>
+                  <div style="background-color: ${primaryColor}; color: #ffffff; padding: 12px 24px; border-radius: 8px; font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.2}px; font-weight: 700;">
+                    ${gameState.timeRemaining}s
+                  </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px;">
+                  ${gameState.currentItems.map(item => `
+                    <div class="item-card" style="background-color: ${surfaceColor}; border: 2px solid ${secondaryColor}30; border-radius: 12px; padding: 24px; text-align: center;">
+                      <div style="font-size: ${baseSize * 3}px; margin-bottom: 12px;">${item.emoji}</div>
+                      <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; font-weight: 600; color: ${textColor};">${item.name}</div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (gameState.phase === 'recall') {
+        const allOptions = shuffleArray([...allItems]);
+        
+        content = `
+          <div class="min-h-full flex items-center justify-center p-6">
+            <div class="w-full max-w-4xl fade-in">
+              <div style="background-color: ${surfaceColor}; border-radius: 16px; padding: 32px; margin-bottom: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+                <div style="text-align: center; margin-bottom: 32px;">
+                  <div class="covered" style="height: 200px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                    <div style="font-size: ${baseSize * 4}px;">🎭</div>
+                  </div>
+                  <h2 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.5}px; font-weight: 700; color: ${textColor}; margin-bottom: 8px;">
+                    Select the Items You Remember
+                  </h2>
+                  <p style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.9}px; color: ${textColor}; opacity: 0.7;">
+                    Selected: ${gameState.selectedAnswers.size} / ${gameState.currentItems.length}
+                  </p>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                  ${allOptions.map(item => {
+                    const isSelected = gameState.selectedAnswers.has(item.name);
+                    return `
+                      <button 
+                        onclick="toggleAnswer('${item.name}')"
+                        class="item-card"
+                        style="background-color: ${isSelected ? primaryColor + '20' : surfaceColor}; border: 2px solid ${isSelected ? primaryColor : '#e2e8f0'}; border-radius: 12px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s;">
+                        <div style="font-size: ${baseSize * 3}px; margin-bottom: 12px; opacity: ${isSelected ? '1' : '0.5'};">${item.emoji}</div>
+                        <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; font-weight: 600; color: ${textColor};">${item.name}</div>
+                      </button>
+                    `;
+                  }).join('')}
+                </div>
+                
+                <button 
+                  onclick="checkAnswers()"
+                  style="font-family: ${customFont}, ${baseFontStack}; width: 100%; padding: 16px; border-radius: 8px; background-color: ${primaryColor}; color: #ffffff; font-size: ${baseSize * 1.1}px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s;"
+                  onmouseover="this.style.backgroundColor='${adjustColor(primaryColor, -20)}'"
+                  onmouseout="this.style.backgroundColor='${primaryColor}'">
+                  ${config.submit_button_text || defaultConfig.submit_button_text}
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (gameState.phase === 'results') {
+        const correctItems = new Set(gameState.currentItems.map(item => item.name));
+        const correct = Array.from(gameState.selectedAnswers).filter(name => correctItems.has(name));
+        const incorrect = Array.from(gameState.selectedAnswers).filter(name => !correctItems.has(name));
+        const missed = gameState.currentItems.filter(item => !gameState.selectedAnswers.has(item.name));
+        
+        const score = Math.round((correct.length / gameState.currentItems.length) * 100);
+        const metrics = gameState.metrics;
+        
+        content = `
+          <div class="min-h-full flex items-center justify-center p-6">
+            <div class="w-full max-w-4xl fade-in">
+              <div style="background-color: ${surfaceColor}; border-radius: 16px; padding: 48px; box-shadow: 0 10px 40px rgba(0,0,0,0.1);">
+                
+                <!-- Main Score -->
+                <div style="text-align: center; margin-bottom: 32px;">
+                  <div style="font-size: ${baseSize * 4}px; margin-bottom: 16px;">${score >= 80 ? '🌟' : score >= 50 ? '👍' : '💪'}</div>
+                  
+                  <h2 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 2}px; font-weight: 700; color: ${textColor}; margin-bottom: 8px;">
+                    Score: ${score}%
+                  </h2>
+                  
+                  <p style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.1}px; color: ${textColor}; opacity: 0.7; margin-bottom: 16px;">
+                    ${correct.length} correct out of ${gameState.currentItems.length}
+                  </p>
+                  
+                  <!-- MTI Score -->
+                  <div style="background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor}); padding: 20px; border-radius: 12px; margin: 0 auto; max-width: 400px;">
+                    <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.85}px; color: #ffffff; opacity: 0.9; margin-bottom: 8px; font-weight: 600;">
+                      Memory Tray Index (MTI)
+                    </div>
+                    <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 2.5}px; color: #ffffff; font-weight: 700;">
+                      ${Math.round(metrics.displayedMTI)}
+                    </div>
+                    <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px; color: #ffffff; opacity: 0.8; margin-top: 4px;">
+                      Composite cognitive score (200-1000)
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Cognitive Metrics -->
+                <div style="background-color: ${bgColor}30; padding: 24px; border-radius: 12px; margin-bottom: 32px;">
+                  <h3 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.2}px; font-weight: 700; color: ${textColor}; margin-bottom: 20px; text-align: center;">
+                    🧠 Cognitive Metrics
+                  </h3>
+                  
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                    
+                    <!-- Episodic Memory Accuracy -->
+                    <div style="background-color: ${surfaceColor}; padding: 20px; border-radius: 10px; border-top: 3px solid #10b981;">
+                      <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px; color: ${textColor}; opacity: 0.7; margin-bottom: 8px; font-weight: 600;">
+                        1️⃣ Episodic Memory
+                      </div>
+                      <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.8}px; font-weight: 700; color: ${textColor}; margin-bottom: 4px;">
+                        ${(metrics.episodicAccuracy * 100).toFixed(0)}%
+                      </div>
+                      <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px; color: ${textColor}; opacity: 0.6;">
+                        Recall accuracy
+                      </div>
+                      ${metrics.episodicAccuracy < 0.7 ? `
+                        <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.7}px; color: #ef4444; margin-top: 8px; font-weight: 600;">
+                          ⚠️ Below 70% threshold
+                        </div>
+                      ` : ''}
+                    </div>
+                    
+                    <!-- Time to First Correct Selection -->
+                    <div style="background-color: ${surfaceColor}; padding: 20px; border-radius: 10px; border-top: 3px solid #3b82f6;">
+                      <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px; color: ${textColor}; opacity: 0.7; margin-bottom: 8px; font-weight: 600;">
+                        2️⃣ Time to First Correct
+                      </div>
+                      <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.8}px; font-weight: 700; color: ${textColor}; margin-bottom: 4px;">
+                        ${metrics.activeRecallSpeed > 0 ? metrics.activeRecallSpeed.toFixed(1) + 's' : 'N/A'}
+                      </div>
+                      <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px; color: ${textColor}; opacity: 0.6;">
+                        Includes thinking + interaction
+                      </div>
+                      ${metrics.activeRecallSpeed > 0 ? `
+                        <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.7}px; color: ${metrics.activeRecallSpeed < 3 ? '#10b981' : metrics.activeRecallSpeed < 6 ? '#f59e0b' : '#ef4444'}; margin-top: 8px; font-weight: 600;">
+                          ${metrics.activeRecallSpeed < 3 ? '✓ Fast retrieval' : metrics.activeRecallSpeed < 6 ? '○ Moderate speed' : '⚠️ Slower retrieval'}
+                        </div>
+                      ` : ''}
+                    </div>
+                    
+                    <!-- Inhibitory Control -->
+                    <div style="background-color: ${surfaceColor}; padding: 20px; border-radius: 10px; border-top: 3px solid #8b5cf6;">
+                      <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px; color: ${textColor}; opacity: 0.7; margin-bottom: 8px; font-weight: 600;">
+                        3️⃣ Inhibitory Control
+                      </div>
+                      <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.8}px; font-weight: 700; color: ${textColor}; margin-bottom: 4px;">
+                        ${(metrics.inhibitoryControlScore * 100).toFixed(0)}%
+                      </div>
+                      <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.75}px; color: ${textColor}; opacity: 0.6;">
+                        Avoided false items
+                      </div>
+                      <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.7}px; color: ${textColor}; opacity: 0.5; margin-top: 4px;">
+                        False alarm: ${(metrics.falseAlarmRate * 100).toFixed(0)}%
+                      </div>
+                    </div>
+                    
+                  </div>
+                  
+                  <!-- Metric Explanations -->
+                  <div style="margin-top: 20px; padding: 16px; background-color: ${surfaceColor}; border-radius: 8px; border-left: 4px solid ${secondaryColor};">
+                    <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px; color: ${textColor}; line-height: 1.6;">
+                      <strong>Understanding your metrics:</strong><br>
+                      • <strong>Episodic Memory</strong>: Core recall ability (hippocampal function)<br>
+                      • <strong>Time to First Correct</strong>: Speed of memory retrieval (adjusted for UI interactions)<br>
+                      • <strong>Inhibitory Control</strong>: Ability to avoid incorrect items (executive function)<br><br>
+                      <em style="opacity: 0.8;">Note: MTI uses clinically-accepted composite scoring with difficulty normalization</em>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Detailed Results -->
+                <div style="display: grid; gap: 16px; text-align: left; margin-bottom: 32px;">
+                  ${correct.length > 0 ? `
+                    <div style="background-color: #10b98120; padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                      <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; font-weight: 600; color: #10b981; margin-bottom: 12px;">
+                        ✓ Correct (${correct.length})
+                      </div>
+                      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        ${correct.map(name => `<span style="background-color: #ffffff; padding: 8px 16px; border-radius: 8px; font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.9}px; color: ${textColor};">${name}</span>`).join('')}
+                      </div>
+                    </div>
+                  ` : ''}
+                  
+                  ${incorrect.length > 0 ? `
+                    <div style="background-color: #ef444420; padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">
+                      <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; font-weight: 600; color: #ef4444; margin-bottom: 12px;">
+                        ✗ Incorrect (${incorrect.length})
+                      </div>
+                      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        ${incorrect.map(name => `<span style="background-color: #ffffff; padding: 8px 16px; border-radius: 8px; font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.9}px; color: ${textColor};">${name}</span>`).join('')}
+                      </div>
+                    </div>
+                  ` : ''}
+                  
+                  ${missed.length > 0 ? `
+                    <div style="background-color: #f59e0b20; padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                      <div style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; font-weight: 600; color: #f59e0b; margin-bottom: 12px;">
+                        ○ Missed (${missed.length})
+                      </div>
+                      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        ${missed.map(item => `<span style="background-color: #ffffff; padding: 8px 16px; border-radius: 8px; font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.9}px; color: ${textColor};">${item.name}</span>`).join('')}
+                      </div>
+                    </div>
+                  ` : ''}
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                  <button 
+                    onclick="resetGame()"
+                    style="font-family: ${customFont}, ${baseFontStack}; padding: 16px; border-radius: 8px; background-color: ${surfaceColor}; color: ${textColor}; border: 2px solid ${primaryColor}; font-size: ${baseSize * 1.1}px; font-weight: 600; cursor: pointer; transition: all 0.2s;"
+                    onmouseover="this.style.backgroundColor='${primaryColor}10'"
+                    onmouseout="this.style.backgroundColor='${surfaceColor}'">
+                    Back to Home
+                  </button>
+                  <button 
+                    onclick="startGame()"
+                    style="font-family: ${customFont}, ${baseFontStack}; padding: 16px; border-radius: 8px; background-color: ${primaryColor}; color: #ffffff; font-size: ${baseSize * 1.1}px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s;"
+                    onmouseover="this.style.backgroundColor='${adjustColor(primaryColor, -20)}'"
+                    onmouseout="this.style.backgroundColor='${primaryColor}'">
+                    Play Again
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
+      app.innerHTML = content;
+    }
+
+    function adjustColor(color, amount) {
+      const num = parseInt(color.replace('#', ''), 16);
+      const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+      const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
+      const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+      return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+    }
+
+    async function onConfigChange(config) {
+      render();
+    }
+
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities: (config) => ({
+          recolorables: [
+            {
+              get: () => config.background_color || defaultConfig.background_color,
+              set: (value) => {
+                config.background_color = value;
+                window.elementSdk.setConfig({ background_color: value });
+              }
+            },
+            {
+              get: () => config.surface_color || defaultConfig.surface_color,
+              set: (value) => {
+                config.surface_color = value;
+                window.elementSdk.setConfig({ surface_color: value });
+              }
+            },
+            {
+              get: () => config.text_color || defaultConfig.text_color,
+              set: (value) => {
+                config.text_color = value;
+                window.elementSdk.setConfig({ text_color: value });
+              }
+            },
+            {
+              get: () => config.primary_action_color || defaultConfig.primary_action_color,
+              set: (value) => {
+                config.primary_action_color = value;
+                window.elementSdk.setConfig({ primary_action_color: value });
+              }
+            },
+            {
+              get: () => config.secondary_action_color || defaultConfig.secondary_action_color,
+              set: (value) => {
+                config.secondary_action_color = value;
+                window.elementSdk.setConfig({ secondary_action_color: value });
+              }
+            }
+          ],
+          borderables: [],
+          fontEditable: {
+            get: () => config.font_family || defaultConfig.font_family,
+            set: (value) => {
+              config.font_family = value;
+              window.elementSdk.setConfig({ font_family: value });
+            }
+          },
+          fontSizeable: {
+            get: () => config.font_size || defaultConfig.font_size,
+            set: (value) => {
+              config.font_size = value;
+              window.elementSdk.setConfig({ font_size: value });
+            }
+          }
+        }),
+        mapToEditPanelValues: (config) => new Map([
+          ["game_title", config.game_title || defaultConfig.game_title],
+          ["instruction_text", config.instruction_text || defaultConfig.instruction_text],
+          ["start_button_text", config.start_button_text || defaultConfig.start_button_text],
+          ["submit_button_text", config.submit_button_text || defaultConfig.submit_button_text]
+        ])
+      });
+    }
+
+    render();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ae0604ad552c195',t:'MTc2NTc0MzM1Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ASHA – Your Wellness Companion</title>
+
+  <style>
+/* ------------------------------ BACKGROUND ------------------------------ */
+body {
+  margin: 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  background: radial-gradient(circle at 30% 40%, rgba(255,180,220,0.55), transparent 60%),
+              radial-gradient(circle at 70% 30%, rgba(180,200,255,0.55), transparent 60%),
+              radial-gradient(circle at 50% 80%, rgba(230,200,255,0.45), transparent 70%),
+              #f7f3ff;
+}
+
+/* ------------------------------ LAYOUT ------------------------------ */
+.app-container {
+  display: flex;
+  gap: 20px;
+  height: 100vh;
+  padding: 20px;
+}
+
+.sidebar {
+  width: 260px;
+  height: 88vh;
+  margin: 20px;
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+
+.sidebar h2 {
+  margin: 0;
+  color: #574b90;
+}
+
+.sidebar .active {
+  margin-top: 8px;
+  color: #8d85c3;
+}
+.chat-frame {
+  flex: 1;
+  height: 90vh;
+  margin: 20px;
+  padding: 20px;
+  padding-left: 35px;
+
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 32px;
+
+  backdrop-filter: blur(20px);
+
+  /* inner glow border */
+  box-shadow:
+      inset 0 0 40px rgba(255, 255, 255, 0.6),
+      inset 0 0 80px rgba(200, 150, 255, 0.25),
+      0 8px 30px rgba(0,0,0,0.1);
+
+  border: 2px solid rgba(255,255,255,0.4);
+
+  display: flex;
+}
+
+/* ------------------------------ CHAT WRAPPER ------------------------------ */
+
+.chat-wrapper {
+  flex: 1;
+  height: 83vh;
+  margin: 20px 20px 20px 0;
+
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(20px);
+
+  /* PERFECT smooth frame */
+  border-radius: 28px;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+
+  /* remove deep multiple shadows */
+  box-shadow:
+      0 4px 20px rgba(0,0,0,0.08),
+      inset 0 0 25px rgba(255,255,255,0.4);
+
+  display: flex;
+  flex-direction: column;
+  position: relative;
+
+  padding: 25px;
+  
+}
+
+
+/* ------------------------------ MESSAGES ------------------------------ */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 40px 140px;
+}
+
+.bubble {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.bubble-text {
+  background: rgba(255, 218, 236, 0.75);
+  padding: 16px 20px;
+  border-radius: 22px;
+  box-shadow: 0 6px 20px rgba(255,150,200,0.25);
+  font-size: 18px;
+  color: #5a5270;
+  max-width: 75%;
+  line-height: 1.45;
+}
+
+/* USER BUBBLE (Added to match backend logic) */
+.user-bubble .bubble-text {
+  background: #4a90e2;
+  color: white;
+  border-radius: 20px 20px 0 20px;
+}
+
+/* ASHA BUBBLE */
+.asha-bubble .bubble-text {
+  background: rgba(255,218,236,0.75);
+  color: #333;
+  border-radius: 20px 20px 20px 0;
+}
+
+/* ------------------------------ INPUT BAR ------------------------------ */
+.input-bar {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 85%;
+  background: white;
+  border-radius: 40px;
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  box-shadow: 0 6px 25px rgba(0,0,0,0.15);
+}
+
+.input-bar input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 16px;
+}
+
+.input-bar button {
+  background: linear-gradient(135deg, #c9a7ff, #9f82ff);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+}
+  </style>
+</head>
+
+<body>
+
+<div class="app-container">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <h2>ASHA</h2>
+    <p class="active">● Active</p>
+  </div>
+  
+<div class="chat-frame">
+    <div class="chat-wrapper">
+  
+    
+    <div class="messages" id="chat">
+      <!-- Default bot message -->
+      <div class="bubble asha-bubble">
+        <div class="bubble-text">💜 HI, how are you feeling today?</div>
+      </div>
+    </div>
+
+    <!-- INPUT BAR -->
+    <div class="input-bar">
+      <input type="text" id="msg" placeholder="Enter your message" />
+      <button id="sendBtn">➤</button>
+    </div>
+   </div>
+
+
+  </div>
+</div>
+
+<script>
+  const chatBox = document.getElementById("chat");
+  const msgInput = document.getElementById("msg");
+  let messages = [];
+
+  // ----------- ADD MESSAGE TO UI -----------
+  function appendBubble(text, sender) {
+    const bubble = document.createElement("div");
+    bubble.classList.add("bubble");
+    bubble.classList.add(sender === "user" ? "user-bubble" : "asha-bubble");
+
+    bubble.innerHTML = `
+        <div class="bubble-text">
+            ${sender === "asha" ? "Asha: " : ""}${text.replace(/\n/g, "<br>")}
+            </div>
+
+    `;
+
+    chatBox.appendChild(bubble);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  // ----------- SEND MESSAGE FUNCTION -----------
+  async function sendMessage() {
+    const text = msgInput.value.trim();
+    if (!text) return;
+
+    // Add user bubble
+    appendBubble(text, "user");
+
+    messages.push({ role: "user", content: text });
+    msgInput.value = "";
+
+    try {
+      const res = await fetch("http://localhost:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages }),
+      });
+
+      const data = await res.json();
+      const reply = data.reply;
+
+      messages.push({ role: "assistant", content: reply });
+
+      // Add Asha bubble
+      appendBubble(reply, "asha");
+
+    } catch (err) {
+      appendBubble("Oops! Something went wrong.", "asha");
+    }
+  }
+
+  // ----------- BUTTON CLICK -----------
+  document.getElementById("sendBtn").onclick = sendMessage;
+
+  // ----------- ENTER KEY SEND -----------
+  msgInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") sendMessage();
+  });
+</script>
+
+</body>
+</html>
